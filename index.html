@@ -1,4 +1,4 @@
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+﻿<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gestão Financeira 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
@@ -602,14 +602,14 @@ function rCons(){
   const iR=[['Compra/Venda A&ccedil;&otilde;es',m=>gi(m,'Compra Ações','s')-gi(m,'Venda Ações','e'),'neg','Venda Ações'],['Aplica&ccedil;&atilde;o CDB',m=>gi(m,'Aplicação CDB','s')-gi(m,'Resgate CDB','e'),'neg','Aplicação CDB'],['Investimento Internacional',m=>gi(m,'Invest. Internacional','s')-gi(m,'Invest. Internacional','e'),'neg','Invest. Internacional'],['Im&oacute;vel',m=>gi(m,'Imóvel','s')-gi(m,'Imóvel','e'),'neg','Imóvel'],['Liquida&ccedil;&atilde;o B3',m=>gi(m,'Liquidação B3','s')-gi(m,'Liquidação B3','e'),'neg','Liquidação B3'],['Cofrinho Di&aacute;rio',m=>gd(m,'Cofrinhos','s')-gd(m,'Cofrinhos','e'),'neg','Cofrinhos D'],['Cofrinho Investimento',m=>gi(m,'Cofrinhos','s')-gi(m,'Cofrinhos','e'),'neg','Cofrinhos I']];
   const _kdD=new Set(['Moradia','Transporte/Veículo','Saúde','Compras Débito','Pagamento Boleto','Serviços Bancários','Assinaturas','Alimentação','Transporte','Outros','Salário','Dividendos','JSCP','Rendimento Aplic.','Resgate CDB','Transf. Entre Contas','Fatura Cartão','Transferência','Compras Online','Cofrinhos','Compra Ações','Venda Ações']);
   const _kdC=new Set(['Alimentação','Vestuário','Lazer/Turismo','Saúde','Transporte','Hobby/Assin.','Educação','Diversos','Supermercado','Outros']);
-  const dR=[['Moradia',m=>gd(m,'Moradia','s')-gd(m,'Moradia','e'),'neg','Moradia'],['Transporte/Ve&iacute;culo',m=>gd(m,'Transporte/Veículo','s'),'neg','Transporte/Veículo'],['Sa&uacute;de',m=>gd(m,'Saúde','s')+gc(m,'Saúde'),'neg','Saúde'],['Compras D&eacute;bito',m=>gd(m,'Compras Débito','s'),'neg','Compras Débito'],['Pagamento Boleto',m=>gd(m,'Pagamento Boleto','s')+gi(m,'Pagamento Boleto','s'),'neg','Pagamento Boleto'],['Servi&ccedil;os Banc&aacute;rios',m=>gd(m,'Serviços Bancários','s')+gi(m,'Serviços Bancários','s'),'neg','Serviços Bancários'],['IR/DARF',m=>gi(m,'IR/DARF','s'),'neg','IR/DARF'],['IR B3',m=>gi(m,'IR B3','s'),'neg','IR B3'],['IOF',m=>gi(m,'IOF','s'),'neg','IOF'],['Corretagem B3',m=>gi(m,'Corretagem B3','s'),'neg','Corretagem B3'],['Assinaturas',m=>gd(m,'Assinaturas','s')+gc(m,'Hobby/Assin.'),'neg','Assinaturas'],['Alimentação',m=>gd(m,'Alimentação','s')+gc(m,'Alimentação'),'neg','Alimentação'],['Vestuário',m=>gc(m,'Vestuário'),'neg','Vestuário'],['Lazer/Turismo',m=>gc(m,'Lazer/Turismo'),'neg','Lazer/Turismo'],['Transporte',m=>gd(m,'Transporte','s')+gc(m,'Transporte'),'neg','Transporte'],['Educação',m=>gc(m,'Educação'),'neg','Educação'],['Diversos',m=>gc(m,'Diversos'),'neg','Diversos'],['Supermercado',m=>gc(m,'Supermercado'),'neg','Supermercado'],['Outros',m=>gd(m,'Outros','s')+gc(m,'Outros'),'neg','Outros']];
+  const dR=[['Moradia',m=>gd(m,'Moradia','s')-gd(m,'Moradia','e'),'neg','Moradia'],['Transporte/Ve&iacute;culo',m=>gd(m,'Transporte/Veículo','s')-gd(m,'Transporte/Veículo','e'),'neg','Transporte/Veículo'],['Sa&uacute;de',m=>gd(m,'Saúde','s')-gd(m,'Saúde','e')+gc(m,'Saúde'),'neg','Saúde'],['Compras D&eacute;bito',m=>gd(m,'Compras Débito','s')-gd(m,'Compras Débito','e'),'neg','Compras Débito'],['Pagamento Boleto',m=>gd(m,'Pagamento Boleto','s')+gi(m,'Pagamento Boleto','s')-gd(m,'Pagamento Boleto','e')-gi(m,'Pagamento Boleto','e'),'neg','Pagamento Boleto'],['Servi&ccedil;os Banc&aacute;rios',m=>gd(m,'Serviços Bancários','s')+gi(m,'Serviços Bancários','s')-gd(m,'Serviços Bancários','e')-gi(m,'Serviços Bancários','e'),'neg','Serviços Bancários'],['IR/DARF',m=>gi(m,'IR/DARF','s')-gi(m,'IR/DARF','e'),'neg','IR/DARF'],['IR B3',m=>gi(m,'IR B3','s')-gi(m,'IR B3','e'),'neg','IR B3'],['IOF',m=>gi(m,'IOF','s')-gi(m,'IOF','e'),'neg','IOF'],['Corretagem B3',m=>gi(m,'Corretagem B3','s')-gi(m,'Corretagem B3','e'),'neg','Corretagem B3'],['Assinaturas',m=>gd(m,'Assinaturas','s')-gd(m,'Assinaturas','e')+gc(m,'Hobby/Assin.'),'neg','Assinaturas'],['Alimentação',m=>gd(m,'Alimentação','s')-gd(m,'Alimentação','e')+gc(m,'Alimentação'),'neg','Alimentação'],['Vestuário',m=>gc(m,'Vestuário'),'neg','Vestuário'],['Lazer/Turismo',m=>gc(m,'Lazer/Turismo'),'neg','Lazer/Turismo'],['Transporte',m=>gd(m,'Transporte','s')-gd(m,'Transporte','e')+gc(m,'Transporte'),'neg','Transporte'],['Educação',m=>gc(m,'Educação'),'neg','Educação'],['Diversos',m=>gc(m,'Diversos'),'neg','Diversos'],['Supermercado',m=>gc(m,'Supermercado'),'neg','Supermercado'],['Outros',m=>gd(m,'Outros','s')-gd(m,'Outros','e')+gc(m,'Outros'),'neg','Outros']];
   // CATS_D/C primeiro — dR completo antes do CATS_I (evita duplicatas)
   const _dRK=new Map(dR.map((r,i)=>[r[3],i]));
   CATS_D.filter(c=>!_kdD.has(c)).forEach(c=>{
     const hasSaida=Object.values(dM).some(cats=>cats[c]&&cats[c].s>0.01);
     if(!hasSaida)return; // categoria só tem entrada → vai para rR via scan dinâmico
-    if(_dRK.has(c)){const i=_dRK.get(c);const f=dR[i][1];dR[i]=[dR[i][0],m=>f(m)+gd(m,c,'s'),dR[i][2],dR[i][3]];}
-    else{_dRK.set(c,dR.length);dR.push([c,m=>gd(m,c,'s'),'neg',c]);}});
+    if(_dRK.has(c)){const i=_dRK.get(c);const f=dR[i][1];dR[i]=[dR[i][0],m=>f(m)+gd(m,c,'s')-gd(m,c,'e'),dR[i][2],dR[i][3]];}
+    else{_dRK.set(c,dR.length);dR.push([c,m=>gd(m,c,'s')-gd(m,c,'e'),'neg',c]);}});
   CATS_C.filter(c=>!_kdC.has(c)).forEach(c=>{
     if(_dRK.has(c)){const i=_dRK.get(c);const f=dR[i][1];dR[i]=[dR[i][0],m=>f(m)+gc(m,c),dR[i][2],dR[i][3]];}
     else{_dRK.set(c,dR.length);dR.push([c,m=>gc(m,c),'neg',c]);}});
@@ -618,7 +618,7 @@ function rCons(){
   const _iExcl=new Set([...rR.map(r=>r[3]),...dR.map(r=>r[3]),..._kdD,..._kdC,'Transf. Entre Contas','Transferência','Fatura Cartão','Cofrinhos','Compra Ações','Venda Ações']);
   CATS_I.filter(c=>!_iRK.has(c)&&!_iExcl.has(c)).forEach(c=>{const hasS=Object.values(iM).some(cats=>cats[c]&&cats[c].s>0.01);if(!hasS){return;}iR.push([c,m=>gi(m,c,'s')-gi(m,c,'e'),'neg',c]);});
   // Patch dR: INVEST saídas reclassificadas como despesa somam na linha correspondente
-  {const _iRKall=new Set(iR.map(r=>r[3]));const _dRhasI=new Set(['IR/DARF','IR B3','IOF','Corretagem B3','Pagamento Boleto','Serviços Bancários']);dR.forEach((row,idx)=>{if(_iRKall.has(row[3])||_dRhasI.has(row[3]))return;const c=row[3];if(Object.values(iM).some(mm=>mm[c]&&mm[c].s>0.01)){const f=row[1];dR[idx]=[row[0],m=>f(m)+gi(m,c,'s'),row[2],row[3]];}});}
+  {const _iRKall=new Set(iR.map(r=>r[3]));const _dRhasI=new Set(['IR/DARF','IR B3','IOF','Corretagem B3','Pagamento Boleto','Serviços Bancários']);dR.forEach((row,idx)=>{if(_iRKall.has(row[3])||_dRhasI.has(row[3]))return;const c=row[3];if(Object.values(iM).some(mm=>mm[c]&&mm[c].s>0.01)){const f=row[1];dR[idx]=[row[0],m=>f(m)+gi(m,c,'s')-gi(m,c,'e'),row[2],row[3]];}});}
   // Push dinâmico rR: após dR e iR completos, varre dM+iM para entradas não cobertas
   {const _rRK=new Set(rR.map(r=>r[3]));
   const _rExcl=new Set([...iR.map(r=>r[3]),...dR.map(r=>r[3]),..._kdD,..._kdC,'Transf. Entre Contas','Fatura Cartão','Transferência','Rendimento Aplic.','Resgate CDB','Cofrinhos','Compra Ações','Venda Ações']);
@@ -634,7 +634,7 @@ function rCons(){
   // Catch-all: garante que nenhuma saída de DIARIA ou CARTAO fique fora de dR
   {const _dRKf=new Set(dR.map(r=>r[3]));
   const _noShowCA=new Set([...rR.map(r=>r[3]),...iR.map(r=>r[3]),...tR.map(r=>r[3]),'Transf. Entre Contas','Fatura Cartão','Transferência','Cofrinhos','Compra Ações','Venda Ações']);
-  Object.values(dM).forEach(cats=>Object.entries(cats).forEach(([c,v])=>{if(v.s>0.01&&!_dRKf.has(c)&&!_noShowCA.has(c)){_dRKf.add(c);dR.push([c,m=>gd(m,c,'s'),'neg',c]);}}));
+  Object.values(dM).forEach(cats=>Object.entries(cats).forEach(([c,v])=>{if(v.s>0.01&&!_dRKf.has(c)&&!_noShowCA.has(c)){_dRKf.add(c);dR.push([c,m=>gd(m,c,'s')-gd(m,c,'e'),'neg',c]);}}));
   Object.values(cM).forEach(cats=>Object.entries(cats).forEach(([c,v])=>{if(v>0.01&&!_dRKf.has(c)&&!_noShowCA.has(c)){_dRKf.add(c);dR.push([c,m=>gc(m,c),'neg',c]);}}));}
   const ar=_allRows();
   const grR=_sortGrp(ar.filter(r=>r.grp==='r'),'r');
