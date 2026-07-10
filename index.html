@@ -755,10 +755,14 @@ function rDash(){
   const invPct=recGrand>0?(invGrand/recGrand*100).toFixed(1)+'%':'—';
   const desPct=recGrand>0?(desGrand/recGrand*100).toFixed(1)+'%':'—';
   const patPct=recGrand>0?(patGrand/recGrand*100).toFixed(1)+'%':'—';
-  const kpiRow=(lbl,val,cl,sub,avgVal)=>`<div class="ck"><div class="kpi-lbl">${lbl}</div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="kpi-val ${cl}" style="${cl?'':'color:#22d3ee'}">R$ ${fc(val)}</div>${avg(avgVal)}</div><div class="kpi-sub">${sub}</div></div>`;
-  const patCard=patGrand>0.01?kpiRow('&#127968; Aquisi&ccedil;&atilde;o Patrim&ocirc;nio',patGrand,'',`${patPct} das receitas`,patGrand):'';
-  const kpi=`<div class="cg3">${kpiRow('&#128176; Receita',recGrand,'green','Total do per&iacute;odo',recGrand)}${kpiRow('&#128200; Investimentos',invGrand,'purple',`${invPct} das receitas`,invGrand)}${kpiRow('&#128184; Despesas',desGrand,'red',`${desPct} das receitas`,desGrand)}${patCard}</div>`;
   const divs=(_cats.r['Dividendos']||0)+(_cats.r['JSCP']||0);
+  const salTotal=_cats.r['Salário']||0;
+  const salPct=recGrand>0?(salTotal/recGrand*100).toFixed(1)+'%':'—';
+  const divPct2=recGrand>0?(divs/recGrand*100).toFixed(1)+'%':'—';
+  const recExtra=recGrand>0.01?`<div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--mu)">Sal&#225;rio&nbsp;<b style="color:var(--tx)">R$&nbsp;${fc(salTotal)}</b>&nbsp;<b style="color:var(--gr)">(${salPct})</b></span><span style="font-size:11px;color:var(--mu)">Dividendos&nbsp;<b style="color:var(--tx)">R$&nbsp;${fc(divs)}</b>&nbsp;<b style="color:#818cf8">(${divPct2})</b></span></div>`:'';
+  const kpiRow=(lbl,val,cl,sub,avgVal,extra)=>`<div class="ck"><div class="kpi-lbl">${lbl}</div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="kpi-val ${cl}" style="${cl?'':'color:#22d3ee'}">R$ ${fc(val)}</div>${avg(avgVal)}</div><div class="kpi-sub">${sub}</div>${extra||''}</div>`;
+  const patCard=patGrand>0.01?kpiRow('&#127968; Aquisi&ccedil;&atilde;o Patrim&ocirc;nio',patGrand,'',`${patPct} das receitas`,patGrand):'';
+  const kpi=`<div class="cg3">${kpiRow('&#128176; Receita',recGrand,'green','Total do per&iacute;odo',recGrand,recExtra)}${kpiRow('&#128200; Investimentos',invGrand,'purple',`${invPct} das receitas`,invGrand)}${kpiRow('&#128184; Despesas',desGrand,'red',`${desPct} das receitas`,desGrand)}${patCard}</div>`;
   const rendItau=recGrand-divs;
   const rendItau50=rendItau*0.5;
   const meta=divs+rendItau50;
@@ -819,7 +823,7 @@ function rDash(){
   });
   const _fxAvg={Moradia:0};
   const _mvs=Object.values(_fxByMK).map(m=>m['Moradia']||0).filter(v=>v>0.01);
-  _fxAvg['Moradia']=_mvs.length?_mvs.reduce((a,b)=>a+b,0)/_mvs.length:0;
+  _fxAvg['Moradia']=_mvs.length?Math.max(0,_mvs.reduce((a,b)=>a+b,0)/_mvs.length-600):0;
   // Assinaturas: qualquer origem (DIARIA, INVEST, CARTAO) com cat=Assinaturas
   const _subsByKey={};
   const _instPat=/\d{1,2}\/\d{1,2}$/;
@@ -849,7 +853,8 @@ function rDash(){
   const _sub3Mo=_addM(_todayMes,-3);
   const _subs=Object.values(_subsByKey).filter(s=>_ordM(s.mes)>=_ordM(_sub3Mo)).sort((a,b)=>b.val-a.val);
   const _subsTot=_subs.reduce((s,{val})=>s+val,0);
-  const _fxTotal=(_fxAvg['Moradia']||0)+_subsTot;
+  const _fxMae=500;const _fxRaia=269;
+  const _fxTotal=(_fxAvg['Moradia']||0)+_fxMae+_fxRaia+_subsTot;
   // Salário estimado: usa categoria original do PDF (r.cat), ignora overrides
   // Exclui meses com Dividendos (também pela categoria original)
   const _salByM={};
@@ -875,6 +880,10 @@ function rDash(){
   // meses a exibir: a partir do mês atual
   const _pMesAll=new Set([...Object.keys(_proj),...Array.from({length:6},(_,i)=>_addM(_todayMes,i))]);
   const _pMes=[..._pMesAll].filter(m=>_ordM(m)>=_ordM(_todayMes)).sort((a,b)=>_ordM(a)-_ordM(b)).slice(0,8);
+  // salário anual e orçamento mensal (deve vir antes do map dos cards)
+  const _annualByCat=cat=>{const byYr={};INVEST.forEach(r=>{if(r.tipo!=='entrada'||r.cat!==cat)return;const yr=r.date.split('/')[2];byYr[yr]=(byYr[yr]||0)+r.val;});const vals=Object.values(byYr).filter(v=>v>0.01);return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;};
+  const _anuPlr=_annualByCat('PLR/Bônus');const _anu13=_annualByCat('Décimo Terceiro');const _anuFer=_annualByCat('Férias');
+  const _salAnual=_recAvg*12+_anuPlr+_anu13+_anuFer;const _salAnual50=_salAnual*0.5;const _gMensal=_salAnual50/12;
   // constrói cards de projeção
   const _pCards=_pMes.map(mes=>{
     const parc=(_proj[mes]||[]).sort((a,b)=>b.val-a.val);
@@ -886,32 +895,28 @@ function rDash(){
     const totalRec=_recAvg+extrasTot;
     const totDes=_fxTotal+parcTot;const saldo=totalRec-totDes;const sc=saldo>=0?'var(--gr)':'var(--rd)';
     const _row=(lbl,val,mu)=>`<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px" title="${lbl}"><span style="color:var(--mu);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mu?lbl:lbl}</span><span>R$ ${fc(val)}</span></div>`;
-    const fxRows=_fxAvg['Moradia']>0.01?_row('Moradia',_fxAvg['Moradia'],true):'';
+    const fxRows=(_fxAvg['Moradia']>0.01?_row('Moradia',_fxAvg['Moradia'],true):'')+_row('M&#227;e',_fxMae,true)+_row('Raia Livre (Teo)',_fxRaia,true);
     const subRows=_subs.map(({desc,val})=>_row(desc,val,true)).join('');
     const subTotRow=_subs.length>1?`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total</span><span style="color:var(--tx)">${fc(_subsTot)}</span></div>`:'';
     const pRows=parc.map(p=>_row(p.desc,p.val,true)).join('');
     const parcTotRow=parc.length>1?`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total</span><span style="color:var(--tx)">${fc(parcTot)}</span></div>`:'';
     const parcSec=parc.length?`<div class="kpi-lbl" style="margin-top:12px">Parcelas cart&#227;o</div>${pRows}${parcTotRow}`:'<div style="font-size:11px;color:var(--mu);margin-top:8px;font-style:italic">Sem parcelas</div>';
     const extrasRows=extrasHist.length?`<div class="kpi-lbl" style="margin-top:0">Extras esperados</div>`+extrasHist.map(([,mc])=>Object.entries(mc).map(([cat,v])=>`<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px"><span style="color:var(--mu)">${cat}</span><span style="color:var(--gr)">R$ ${fc(v)}</span></div>`).join('')).join(''):'';
-    const recSec=`<div class="kpi-lbl">Sal&#225;rio est.</div><div style="font-size:22px;font-weight:700;color:var(--gr);margin-bottom:${extrasRows?'8px':'14px'}">R$ ${fc(_recAvg)}</div>${extrasRows}${extrasRows?`<div style="font-size:11px;color:var(--mu);margin:4px 0 14px">Total receita: R$ ${fc(totalRec)}</div>`:''}`;
-    // orçamento disponível = 50% da receita (meta de investimento)
-    const metaMensal=totalRec*0.5;
-    const orcDisp=totalRec-metaMensal;
+    const recSec=`<div class="kpi-lbl">Or&#231;amento p/ gastos</div><div style="font-size:22px;font-weight:700;color:var(--ac);margin-bottom:14px">R$&nbsp;${fc(_gMensal)}</div>`;
     const isCurMes=mes===_todayMes;
-    // gastos reais do mês atual: todas as saídas lançadas nos arrays
     const gastoAtual=isCurMes?(DIARIA.filter(r=>r.tipo==='saida'&&_gmd(r.date)===mes).reduce((s,r)=>s+r.val,0)+INVEST.filter(r=>r.tipo==='saida'&&_gmd(r.date)===mes).reduce((s,r)=>s+r.val,0)+CARTAO.filter(r=>r.mes===mes).reduce((s,r)=>s+r.val,0)):0;
-    // quanto ainda pode gastar: disponível - (gastos reais no mês atual OU comprometido nos futuros)
     const _comprVal=isCurMes?totDes+gastoAtual:totDes;
-    const aindaPode=orcDisp-_comprVal;
+    const aindaPode=_gMensal-_comprVal;
     const apColor=aindaPode>=0?'var(--gr)':'var(--rd)';
     const apBg=aindaPode>=0?'rgba(74,222,128,.08)':'rgba(248,113,113,.08)';
     const comprometidoRow=`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu);font-size:12px">Comprometido (fixos+parc.)</span><span style="color:var(--rd);font-weight:600">R$ ${fc(_comprVal)}</span></div>`;
-    const orcLabel='Or&#231;amento livre';
-    const bottomSec=`<div style="border-top:1px solid var(--br);margin-top:14px;padding-top:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu);font-size:12px">Meta invest. (50%)</span><span style="color:#818cf8;font-weight:600">R$ ${fc(metaMensal)}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="color:var(--mu);font-size:12px">Dispon&#237;vel p/ gastar</span><span style="font-weight:600">R$ ${fc(orcDisp)}</span></div>${comprometidoRow}<div style="display:flex;justify-content:space-between;align-items:center;background:${apBg};border-radius:6px;padding:7px 10px;margin-top:6px"><span style="font-weight:700;font-size:13px">${orcLabel}</span><span style="font-weight:800;font-size:16px;color:${apColor}">${aindaPode<0?'&minus;&nbsp;':''}R$&nbsp;${fc(Math.abs(aindaPode))}</span></div></div>`;
+    const bottomSec=`<div style="border-top:1px solid var(--br);margin-top:14px;padding-top:10px">${comprometidoRow}<div style="display:flex;justify-content:space-between;align-items:center;background:${apBg};border-radius:6px;padding:7px 10px;margin-top:6px"><span style="font-weight:700;font-size:13px">Or&#231;amento livre</span><span style="font-weight:800;font-size:16px;color:${apColor}">${aindaPode<0?'&minus;&nbsp;':''}R$&nbsp;${fc(Math.abs(aindaPode))}</span></div></div>`;
     const subSec=subRows?`<div class="kpi-lbl" style="margin-top:10px">Assinaturas</div>${subRows}${subTotRow}`:'';
     return `<div class="ck" style="min-width:240px;flex:0 0 auto"><div style="font-size:17px;font-weight:800;margin-bottom:14px;color:var(--ac)">${mes}</div>${recSec}<div class="kpi-lbl">Custos fixos</div>${fxRows}${subSec}${parcSec}${bottomSec}</div>`;
   }).join('');
-  const projSection=_pMes.length?`<div class="dash-sec">&#128302; Proje&#231;&atilde;o</div><div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:10px">${_pCards}</div>`:'';
+  const _brk=[];if(_recAvg>0.01)_brk.push(`Sal&#225;rio&nbsp;R$&nbsp;${fc(_recAvg)}/m&#234;s&nbsp;&#215;&nbsp;12&nbsp;=&nbsp;<b>R$&nbsp;${fc(_recAvg*12)}</b>`);if(_anu13>0.01)_brk.push(`D&#233;cimo Terceiro&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anu13)}</b>`);if(_anuFer>0.01)_brk.push(`F&#233;rias&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuFer)}</b>`);if(_anuPlr>0.01)_brk.push(`PLR/B&#244;nus&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuPlr)}</b>`);
+  const projHeader=_recAvg>0.01?`<div class="ck" style="margin-bottom:18px"><div class="kpi-lbl">&#128200; Proje&#231;&atilde;o de Sal&#225;rio Anual</div><div style="font-size:11px;color:var(--mu);margin:6px 0 12px;line-height:1.8">${_brk.join('&nbsp;&nbsp;+&nbsp;&nbsp;')}</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px"><div><div style="font-size:11px;color:var(--mu)">Total anual estimado</div><div style="font-size:22px;font-weight:800;color:var(--gr)">R$&nbsp;${fc(_salAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">50% &#8212; para guardar</div><div style="font-size:22px;font-weight:800;color:#818cf8">R$&nbsp;${fc(_salAnual50)}</div></div><div><div style="font-size:11px;color:var(--mu)">50% &#8212; para gastar</div><div style="font-size:22px;font-weight:800;color:var(--ac)">R$&nbsp;${fc(_salAnual50)}</div></div><div style="background:rgba(34,211,238,.08);border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">Gasto mensal dispon&#237;vel</div><div style="font-size:24px;font-weight:900;color:var(--ac)">R$&nbsp;${fc(_gMensal)}<span style="font-size:12px;font-weight:400;color:var(--mu)">/m&#234;s</span></div><div style="font-size:10px;color:var(--mu);margin-top:3px">= total anual &#215; 50% &#247; 12</div></div></div></div>`:'';
+  const projSection=_pMes.length?`<div class="dash-sec">&#128302; Proje&#231;&atilde;o</div>${projHeader}<div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:10px">${_pCards}</div>`:'';
   document.getElementById('dc').innerHTML=
     `<div class="dash-sec">&#128202; Vis&atilde;o Geral</div>${kpi}`
     +metaSec
