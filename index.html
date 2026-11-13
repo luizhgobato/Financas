@@ -2421,6 +2421,9 @@ function planFull(){
   // meta 30% do salário INCLUI o aporte de previdência complementar (set); previdência mensal em folha fica fora dos 30%
   const _rest30=inv30Sum-PREV_EXTRA_27;
   _inv30M.forEach((v,i)=>{inv[i]+=(inv30Sum>0?v/inv30Sum*_rest30:0)+(i===PREV_EXTRA_MES?PREV_EXTRA_27:0);});
+  // despesa total planejada = tudo que não é investido; parte comprometida (fixos+assinaturas+parcelas) + livre p/ gastar (igual todo mês)
+  {const _r=rec.reduce((a,b)=>a+b,0),_i=inv.reduce((a,b)=>a+b,0)-_PREV*12,_d=des.reduce((a,b)=>a+b,0);const _liv=_r-_i-_d;
+   des.forEach((v,i)=>{des[i]+=_liv/12;});cats.d['Livre p/ gastar']=_liv;}
   cats.i={'30%: previdência complementar':PREV_EXTRA_27,'30%: demais aportes':_rest30,'Dividendos reinvestidos':divSum,'Previdência':_PREV*12};
   return{rec,inv,des,pat,cats};
 }
@@ -2632,7 +2635,21 @@ function rDash(){
   const _prevTot=_planMode?((_cats.i&&_cats.i['Previdência'])||0):0;
   const _invSemPrev=invGrand-_prevTot;
   const _saldoSobra=(recGrand-_invSemPrev)-desGrand;
-  const _desExtra=_planMode?`<div style="margin-top:6px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px"><span style="color:var(--mu)">Receita</span><b style="text-align:right">R$&nbsp;${fc(recGrand)}</b><span style="color:var(--mu)">&minus; Investimentos</span><b style="text-align:right">R$&nbsp;${fc(invGrand)}</b>${_prevTot>0.01?`<span style="color:var(--mu)">+ Previd&ecirc;ncia <span style="font-size:10px">(descontada em folha, n&atilde;o est&aacute; na receita)</span></span><b style="text-align:right">R$&nbsp;${fc(_prevTot)}</b>`:''}<span style="color:var(--mu)">&minus; Despesas</span><b style="text-align:right">R$&nbsp;${fc(desGrand)}</b><span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">= Sobra p/ voc&ecirc;</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right;color:var(--gr)">R$&nbsp;${fc(_saldoSobra)} <span style="color:var(--mu);font-weight:400">(&#8776;&nbsp;R$&nbsp;${fc(_saldoSobra/12)}/m&ecirc;s)</span></b></div>`:'';
+  const _COMPR=['Moradia','Mãe','Assinaturas','Parcelas cartão'];
+  const _cmpNote={'Moradia':` <span style="font-size:10px">(R$&nbsp;${fc(MORADIA_BOLETO)} &minus; ${fc(MORADIA_FLAVIA)} Fl&aacute;via/m&ecirc;s)</span>`,'Mãe':' <span style="font-size:10px">(R$&nbsp;500/m&ecirc;s)</span>','Assinaturas':' <span style="font-size:10px">(recorrentes)</span>','Parcelas cartão':' <span style="font-size:10px">(j&aacute; lan&ccedil;adas)</span>'};
+  const _line=(k,v,cl,pct)=>`<span style="color:var(--mu)">${k}</span><b style="color:${cl||'var(--tx)'};text-align:right">R$&nbsp;${fc(v)}</b><b style="color:${cl||'#f87171'};text-align:right">${pct}</b>`;
+  const _pc=v=>desGrand>0?(v/desGrand*100).toFixed(1)+'%':'—';
+  let _desExtra='';
+  if(_planMode){const _cp=_COMPR.filter(k=>(_cats.d[k]||0)>0.01).map(k=>[k,_cats.d[k]]);const _cpTot=_cp.reduce((a,[,v])=>a+v,0);const _liv=_cats.d['Livre p/ gastar']||0;
+    _desExtra=`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">`
+      +`<span style="font-weight:700;grid-column:1/-1;color:var(--tx)">&#128274; J&aacute; comprometido</span>`
+      +_cp.map(([k,v])=>_line(`&nbsp;&nbsp;${k}${_cmpNote[k]||''}`,v,'',_pc(v))).join('')
+      +`<span style="font-weight:700;border-top:1px solid var(--br);padding-top:3px">Subtotal comprometido <span style="font-size:10px;color:var(--mu);font-weight:400">(&#8776;&nbsp;R$&nbsp;${fc(_cpTot/12)}/m&ecirc;s)</span></span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(_cpTot)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">${_pc(_cpTot)}</b>`
+      +`<span style="font-weight:700;color:var(--gr);margin-top:4px">&#128275; Livre p/ gastar <span style="font-size:10px;color:var(--mu);font-weight:400">(&#8776;&nbsp;R$&nbsp;${fc(_liv/12)}/m&ecirc;s)</span></span><b style="color:var(--gr);text-align:right;margin-top:4px">R$&nbsp;${fc(_liv)}</b><b style="color:var(--gr);text-align:right;margin-top:4px">${_pc(_liv)}</b>`
+      +`<span style="font-weight:700;border-top:1px solid var(--br);padding-top:3px">Despesa total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(desGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b>`
+      +`<span style="grid-column:1/-1;font-size:10px;color:var(--mu);margin-top:4px">Despesa total = Receita R$&nbsp;${fc(recGrand)} &minus; Investimentos R$&nbsp;${fc(invGrand-_prevTot)} (sem previd&ecirc;ncia mensal, que j&aacute; sai da folha)</span></div>`;
+  }else{const _dp=Object.entries(_cats.d||{}).filter(([,v])=>v>0.01).sort((a,b)=>b[1]-a[1]);const _top=_dp.slice(0,8);const _oth=desGrand-_top.reduce((a,[,v])=>a+v,0);if(Math.abs(_oth)>0.5)_top.push(['Outras categorias',_oth]);
+    _desExtra=desGrand>0.01?`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">${_top.map(([k,v])=>_line(k,v,'',_pc(v))).join('')}<span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">Total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(desGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b></div>`:'';}
   const _invProg=_planMode?_rInvG:invGrand;
   const nM=MA.filter((_,i)=>(_gRec[i]||0)+(_gInv[i]||0)+(_gDes[i]||0)+((_gPat||[])[i]||0)>0.01).length||1;
   const avg=(v)=>`<span style="font-size:14px;font-weight:600;color:var(--mu);white-space:nowrap">&#8776; R$&nbsp;${fc(v/nM)}<span style="font-size:11px;font-weight:400">/mês</span></span>`;
