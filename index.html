@@ -2395,7 +2395,7 @@ function planFull(){
   const divAvgCompleto=_mesesCompletos.length?_mesesCompletos.reduce((s,m)=>s+_dmRealByM[m],0)/_mesesCompletos.length:0;
   const rec=[],inv=[],des=[],pat=[];const cats={r:{},i:{},d:{},p:{}};
   let inv30Sum=0,divSum=0;
-  const S27=_sal27();
+  const S27=_sal27();const _inv30M=[];
   MM.forEach((m,mi)=>{
     const m27=m.replace('/2026','/2027');
     let rs=0,sal=0,dm=0;
@@ -2409,7 +2409,6 @@ function planFull(){
     cats.r['Dividendos']=(cats.r['Dividendos']||0)+dm;rs+=dm;
     sal=S27.M[mi].tot;cats.r['Salário']=(cats.r['Salário']||0)+sal;rs+=sal;
     if(S27.M[mi].rest){cats.r['Restituição IR (previdência)']=(cats.r['Restituição IR (previdência)']||0)+S27.M[mi].rest;rs+=S27.M[mi].rest;}
-    const _px=mi===PREV_EXTRA_MES?PREV_EXTRA_27:0;
     const inv30=sal*0.3;inv30Sum+=inv30;divSum+=dm;
     const parc=parcByM[m27]||0;
     const ds=fxMoradia+fxMae+subsTot+parc;
@@ -2417,9 +2416,12 @@ function planFull(){
     cats.d['Mãe']=(cats.d['Mãe']||0)+fxMae;
     cats.d['Assinaturas']=(cats.d['Assinaturas']||0)+subsTot;
     if(parc)cats.d['Parcelas cartão']=(cats.d['Parcelas cartão']||0)+parc;
-    rec.push(rs);inv.push(inv30+dm+_PREV+_px);des.push(ds);pat.push(0);
+    rec.push(rs);inv.push(dm+_PREV);_inv30M.push(inv30);des.push(ds);pat.push(0);
   });
-  cats.i={'30% do Salário':inv30Sum,'Dividendos reinvestidos':divSum,'Previdência':_PREV*12,'Previdência (aporte extra)':PREV_EXTRA_27};
+  // meta 30% do salário INCLUI o aporte de previdência complementar (set); previdência mensal em folha fica fora dos 30%
+  const _rest30=inv30Sum-PREV_EXTRA_27;
+  _inv30M.forEach((v,i)=>{inv[i]+=(inv30Sum>0?v/inv30Sum*_rest30:0)+(i===PREV_EXTRA_MES?PREV_EXTRA_27:0);});
+  cats.i={'30%: previdência complementar':PREV_EXTRA_27,'30%: demais aportes':_rest30,'Dividendos reinvestidos':divSum,'Previdência':_PREV*12};
   return{rec,inv,des,pat,cats};
 }
 
@@ -2644,10 +2646,10 @@ function rDash(){
   const _recParts=Object.entries(_cats.r||{}).filter(([,v])=>Math.abs(v)>0.01).sort((a,b)=>b[1]-a[1]);
   const _recDiff=recGrand-_recParts.reduce((a,[,v])=>a+v,0);if(Math.abs(_recDiff)>0.5)_recParts.push(['Outros',_recDiff]);
   const recExtra=recGrand>0.01?`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">${_recParts.map(([k,v])=>`<span style="color:var(--mu)">${k}</span><b style="color:var(--tx);text-align:right">R$&nbsp;${fc(v)}</b><b style="color:var(--gr);text-align:right">${(v/recGrand*100).toFixed(1)}%</b>`).join('')}<span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">Total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(recGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b></div>`:'';
-  const _invParts=Object.entries((_planMode?_cats.i:_invNet)||{}).filter(([,v])=>Math.abs(v)>0.01).sort((a,b)=>b[1]-a[1]);
+  const _invParts=Object.entries((_planMode?_cats.i:_invNet)||{}).filter(([,v])=>Math.abs(v)>0.01).sort((a,b)=>_planMode?0:b[1]-a[1]);
   const _invDiff=invGrand-_invParts.reduce((a,[,v])=>a+v,0);if(Math.abs(_invDiff)>0.5)_invParts.push(['Outros',_invDiff]);
   const _salPlan=(_cats.r&&_cats.r['Salário'])||0;
-  const _invNote=k=>!_planMode&&/Compra\/Venda|Im\u00f3vel|Imóvel/.test(k)?' <span style="font-size:10px">(resgate/venda líquida)</span>':_planMode?(k==='30% do Salário'?` <span style="font-size:10px">(30% de R$&nbsp;${fc(_salPlan)})</span>`:k==='Dividendos reinvestidos'?' <span style="font-size:10px">(100% dos dividendos)</span>':k==='Previdência'?' <span style="font-size:10px">(R$&nbsp;932/m&ecirc;s em folha)</span>':k==='Previdência (aporte extra)'?' <span style="font-size:10px">(set/27, sai da conta)</span>':''):'';
+  const _invNote=k=>!_planMode&&/Compra\/Venda|Imóvel/.test(k)?' <span style="font-size:10px">(resgate/venda líquida)</span>':!_planMode?'':k==='30%: previdência complementar'?` <span style="font-size:10px">(set/27)</span>`:k==='30%: demais aportes'?` <span style="font-size:10px">(30% de R$&nbsp;${fc(_salPlan)} = R$&nbsp;${fc(_salPlan*0.3)} &minus; previd. compl.)</span>`:k==='Dividendos reinvestidos'?' <span style="font-size:10px">(100% dos dividendos)</span>':k==='Previdência'?' <span style="font-size:10px">(mensal em folha, fora dos 30%)</span>':'';
   const invExtra=invGrand>0.01?`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">${_invParts.map(([k,v])=>`<span style="color:var(--mu)">${k}${_invNote(k)}</span><b style="color:${v<0?'var(--rd)':'var(--tx)'};text-align:right">${v<0?'&minus;&nbsp;':''}R$&nbsp;${fc(Math.abs(v))}</b><b style="color:${v<0?'var(--rd)':'#818cf8'};text-align:right">${(v/invGrand*100).toFixed(1)}%</b>`).join('')}<span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">Total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(invGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b></div>`:'';
   const kpiRow=(lbl,val,cl,sub,avgVal,extra,realV)=>`<div class="ck"><div class="kpi-lbl">${lbl}</div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="kpi-val ${cl}" style="${cl?'':'color:#22d3ee'}">R$ ${fc(val)}</div>${avg(avgVal)}</div><div class="kpi-sub">${_planMode?'Planejado &#8212; '+sub:sub}</div>${realV!==undefined?_rl(realV):''}${extra||''}</div>`;
   const patCard=patGrand>0.01?kpiRow('&#127968; Aquisi&ccedil;&atilde;o Patrim&ocirc;nio',patGrand,'',`${patPct} das receitas`,patGrand,'',_rPatG):'';
@@ -2803,7 +2805,7 @@ function rDash(){
     const subSec=subRows?`<div class="kpi-lbl" style="margin-top:10px">Assinaturas</div>${subRows}${subTotRow}`:'';
     return `<div class="ck" style="min-width:240px;flex:0 0 auto"><div style="font-size:17px;font-weight:800;margin-bottom:14px;color:var(--ac)">${mes}</div>${recSec}<div class="kpi-lbl">Custos fixos</div>${fxRows}${fxTotRow}${subSec}${parcSec}${bottomSec}</div>`;
   }).join('');
-  const _brk=[];if(_is27){const _pct=((_S27.r-1)*100).toFixed(1).replace('.',',');_brk.push(`Reajuste de set/2026 (j&aacute; aplicado): folha R$&nbsp;${fc(_S27.base)} vs mediana jan&ndash;ago R$&nbsp;${fc(_S27.med)} = <b>+${_pct}%</b>`);_brk.push(`Folha: jan&ndash;ago/27 = 2026 +${_pct}%; set&ndash;dez/27 = R$&nbsp;${fc(_S27.base)}/m&ecirc;s (sem novo diss&iacute;dio)`);_brk.push(`PLR igual a 2026 (sem reajuste) = R$&nbsp;${fc(_S27.plr)} &nbsp;|&nbsp; 13&ordm;: 1&ordf; R$&nbsp;${fc(_S27.d13a)} + 2&ordf; l&iacute;quida R$&nbsp;${fc(_S27.d13b)} (com INSS/IR)`);_brk.push(`Aporte extra previd&ecirc;ncia R$&nbsp;${fc(PREV_EXTRA_27)} em set/27 &rarr; restitui&ccedil;&atilde;o IR estimada R$&nbsp;${fc(_S27.rest)} em out/27`);_brk.push(`Sal&aacute;rio total 2027 = <b>R$&nbsp;${fc(_S27.tot)}</b>`);}else{if(_recAvg>0.01)_brk.push(`Sal&#225;rio&nbsp;R$&nbsp;${fc(_recAvg)}/m&#234;s&nbsp;&#215;&nbsp;12&nbsp;=&nbsp;<b>R$&nbsp;${fc(_recAvg*12)}</b>`);if(_anu13>0.01)_brk.push(`D&#233;cimo Terceiro&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anu13)}</b>`);if(_anuFer>0.01)_brk.push(`F&#233;rias&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuFer)}</b>`);if(_anuPlr>0.01)_brk.push(`PLR/B&#244;nus&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuPlr)}</b>`);}
+  const _brk=[];if(_is27){const _pct=((_S27.r-1)*100).toFixed(1).replace('.',',');_brk.push(`Reajuste de set/2026 (j&aacute; aplicado): folha R$&nbsp;${fc(_S27.base)} vs mediana jan&ndash;ago R$&nbsp;${fc(_S27.med)} = <b>+${_pct}%</b>`);_brk.push(`Folha: jan&ndash;ago/27 = 2026 +${_pct}%; set&ndash;dez/27 = R$&nbsp;${fc(_S27.base)}/m&ecirc;s (sem novo diss&iacute;dio)`);_brk.push(`PLR igual a 2026 (sem reajuste) = R$&nbsp;${fc(_S27.plr)} &nbsp;|&nbsp; 13&ordm;: 1&ordf; R$&nbsp;${fc(_S27.d13a)} + 2&ordf; l&iacute;quida R$&nbsp;${fc(_S27.d13b)} (com INSS/IR)`);_brk.push(`Investir 30% do sal&aacute;rio = R$&nbsp;${fc(_S27.tot*0.3)}, j&aacute; incluindo a previd&ecirc;ncia complementar de R$&nbsp;${fc(PREV_EXTRA_27)} em set/27 (restitui&ccedil;&atilde;o IR estimada R$&nbsp;${fc(_S27.rest)} em out/27)`);_brk.push(`Sal&aacute;rio total 2027 = <b>R$&nbsp;${fc(_S27.tot)}</b>`);}else{if(_recAvg>0.01)_brk.push(`Sal&#225;rio&nbsp;R$&nbsp;${fc(_recAvg)}/m&#234;s&nbsp;&#215;&nbsp;12&nbsp;=&nbsp;<b>R$&nbsp;${fc(_recAvg*12)}</b>`);if(_anu13>0.01)_brk.push(`D&#233;cimo Terceiro&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anu13)}</b>`);if(_anuFer>0.01)_brk.push(`F&#233;rias&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuFer)}</b>`);if(_anuPlr>0.01)_brk.push(`PLR/B&#244;nus&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuPlr)}</b>`);}
   const projHeader=_recAvg>0.01?`<div class="ck" style="margin-bottom:18px"><div class="kpi-lbl">&#128200; ${_is27?'Proje&#231;&atilde;o Anual (planejado)':'Proje&#231;&atilde;o de Sal&#225;rio Anual'}</div><div style="font-size:11px;color:var(--mu);margin:6px 0 12px;line-height:1.8">${_is27?_brk.join('<br>'):_brk.join('&nbsp;&nbsp;+&nbsp;&nbsp;')}</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px"><div><div style="font-size:11px;color:var(--mu)">${_is27?'Receita planejada (ano)':'Total anual estimado'}</div><div style="font-size:22px;font-weight:800;color:var(--gr)">R$&nbsp;${fc(_salAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">${_is27?'Investir (ano)':'50% &#8212; para guardar'}</div><div style="font-size:22px;font-weight:800;color:#818cf8">R$&nbsp;${fc(_metaInvAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">${_is27?'Despesas planejadas (ano)':'50% &#8212; para gastar'}</div><div style="font-size:22px;font-weight:800;color:var(--ac)">R$&nbsp;${fc(_salAnual50)}</div></div><div style="background:rgba(34,211,238,.08);border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">Gasto mensal dispon&#237;vel</div><div style="font-size:24px;font-weight:900;color:var(--ac)">R$&nbsp;${fc(_gMensal)}<span style="font-size:12px;font-weight:400;color:var(--mu)">/m&#234;s</span></div><div style="font-size:10px;color:var(--mu);margin-top:3px">${_is27?'= (receita &#8722; invest. sem previd&ecirc;ncia) &#247; 12':'= 50% do sal&aacute;rio mensal'}</div></div></div></div>`:'';
   const projSection=_pMes.length?`<div class="dash-sec">&#128302; Proje&#231;&atilde;o</div>${projHeader}<div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:10px">${_pCards}</div>`:'';
   document.getElementById('dc').innerHTML=
