@@ -1946,7 +1946,7 @@ function _saldoIni(src){let b=SALDO_ANT[src];(src==='d'?DIARIA:INVEST).forEach(r
 function setAno(y){if(ANO===y)return;ANO=y;MA=_mesesAno(y);MC=_mesesAno(y);m0='all';m1='all';m2='all';mAll='all';_gRec=null;_gInv=null;_gDes=null;_gPat=null;_cats=null;_catsM=null;document.querySelectorAll('.yr-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===y));document.querySelectorAll('[data-anolbl]').forEach(e=>{e.textContent=e.getAttribute('data-anolbl').replace('{A}',y);});const _n=parseInt(sessionStorage.getItem('gf26_tab')||'0');try{[rL,rCons,rDash,rCats][_n]();}catch(e){}}
 const MS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul'];
 let m0='all',m1='all',m2='all',cV='resumo',cM='all',cS='all',cQ='',dM='all',cE=false,cCrd='all';
-let _gRec,_gInv,_gDes,_gPat,_cats=null,_catsM=null;
+let _gRec,_gInv,_gDes,_gPat,_cats=null,_catsM=null,_invNet={};
 const CG_DEFAULTS={"Salário":"r","Dividendos":"r","PLR/Bônus":"r","Imposto":"d","Investimento Academia":"i","Investimento Previdência":"i","Décimo Terceiro":"r","Rendimento Aplic.":"r","Rendimento Ações":"r","Rendimento Poupança":"r","Compras Débito":"d","Saúde":"d","Moradia":"d","Assinaturas":"d","Serviços Bancários":"d","Pagamento Boleto":"d","IR B3":"d","IR/DARF":"d","Corretagem B3":"d","Outros":"d","Alimentação":"d","Vestuário":"d","Lazer/Turismo":"d","Transporte":"d","Hobby/Assin.":"d","Educação":"d","Diversos":"d","Compra Ações":"i","Venda Ações":"i","Liquidação B3":"i","Aplicação CDB":"i","Resgate CDB":"i","Imóvel":"i","Invest. Internacional":"i","Transferência":"t","Transf. Entre Contas":"t","Fatura Cartão":"t","Transporte/Veículo":"t"};
 let CG=Object.assign({},CG_DEFAULTS,JSON.parse(localStorage.getItem('gf26_cg')||'{}'));
 let CO=JSON.parse(localStorage.getItem('gf26_co')||'{}');
@@ -2329,6 +2329,7 @@ function _assinaturasMensais(){
 // despesa planejada = custos fixos (Moradia media + Mae) + assinaturas + parcelas. investir = dividendos + 30% renda Itau + previdencia.
 // Projeção de salário 2027 a partir dos lançamentos de 2026.
 // Reajuste = folha mensal de set/2026 ÷ mediana da folha mensal jan–ago/2026.
+// Out/2026 fica fora da base: folha veio maior por restituição de IR do aporte extra de R$ 10k na previdência (set/2026).
 // Jan–Ago/2027: mês de 2026 × reajuste (sobe pro nível pós-dissídio, mantendo sazonalidade: férias, PLR, 13º).
 // Set–Dez/2027: nível de set/2026 × reajuste (assume novo dissídio do mesmo % em set/2027).
 function _sal27(){
@@ -2504,7 +2505,8 @@ function rCons(){
   const rec=bRows('&#128176; RECEITAS','r',grR);const inv=bRows('&#128200; INVESTIMENTOS','i',grI,true);const des=bRows('&#128184; DESPESAS','d',grD);const trf=bRows('&#128257; TRANSFER&Ecirc;NCIAS','t',grT);const pat=bRows('&#127968; AQUISI&Ccedil;&Atilde;O PATRIM&Ocirc;NIO','p',grP);
   _gRec=rec.tot;_gDes=des.tot;_gPat=pat.tot;
   // _gInv com a MESMA regra da tabela Consolidado (invRows2/invTot): fluxo líquido, inclui linhas com qualquer valor |v|>0.01
-  {const _iv=MO.map(()=>0);grI.forEach(({fn,abs})=>{const vs=MO.map(fn);const dv=abs?vs.map(v=>-v):vs;if(!dv.some(v=>Math.abs(v)>0.01))return;dv.forEach((v,i)=>{_iv[i]+=v;});});_gInv=_iv;}
+  {const _iv=MO.map(()=>0);grI.forEach(({fn,abs})=>{const vs=MO.map(fn);const dv=abs?vs.map(v=>-v):vs;if(!dv.some(v=>Math.abs(v)>0.01))return;dv.forEach((v,i)=>{_iv[i]+=v;});});_gInv=_iv;
+  _invNet={};grI.forEach(({lbl,fn,abs})=>{const t=MO.map(fn).reduce((a,b)=>a+b,0)*(abs?-1:1);if(Math.abs(t)>0.01){const d=document.createElement('div');d.innerHTML=lbl;_invNet[d.textContent]=t;}});}
   _cats={r:{},i:{},d:{},p:{}};_catsM={};MO.forEach(m=>{_catsM[m]={r:{},i:{},d:{},p:{}};});
   const _fc=(rows,g)=>rows.forEach(({fn,key,abs})=>{const vs=MO.map(fn);const dv=abs?vs.map(v=>-v):vs;if(!dv.some(v=>v>0.01))return;const tot=dv.reduce((a,b)=>a+b,0);if(tot>0.01)_cats[g][key]=tot;MO.forEach((m,i)=>{if(dv[i]>0.01)_catsM[m][g][key]=(_catsM[m][g][key]||0)+dv[i];});});
   _fc(grR,'r');_fc(grI,'i');_fc(grD,'d');_fc(grP,'p');
@@ -2630,9 +2632,14 @@ function rDash(){
   const _recParts=Object.entries(_cats.r||{}).filter(([,v])=>Math.abs(v)>0.01).sort((a,b)=>b[1]-a[1]);
   const _recDiff=recGrand-_recParts.reduce((a,[,v])=>a+v,0);if(Math.abs(_recDiff)>0.5)_recParts.push(['Outros',_recDiff]);
   const recExtra=recGrand>0.01?`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">${_recParts.map(([k,v])=>`<span style="color:var(--mu)">${k}</span><b style="color:var(--tx);text-align:right">R$&nbsp;${fc(v)}</b><b style="color:var(--gr);text-align:right">${(v/recGrand*100).toFixed(1)}%</b>`).join('')}<span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">Total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(recGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b></div>`:'';
+  const _invParts=Object.entries((_planMode?_cats.i:_invNet)||{}).filter(([,v])=>Math.abs(v)>0.01).sort((a,b)=>b[1]-a[1]);
+  const _invDiff=invGrand-_invParts.reduce((a,[,v])=>a+v,0);if(Math.abs(_invDiff)>0.5)_invParts.push(['Outros',_invDiff]);
+  const _salPlan=(_cats.r&&_cats.r['Salário'])||0;
+  const _invNote=k=>!_planMode&&/Compra\/Venda|Im\u00f3vel|Imóvel/.test(k)?' <span style="font-size:10px">(resgate/venda líquida)</span>':_planMode?(k==='30% do Salário'?` <span style="font-size:10px">(30% de R$&nbsp;${fc(_salPlan)})</span>`:k==='Dividendos reinvestidos'?' <span style="font-size:10px">(100% dos dividendos)</span>':k==='Previdência'?' <span style="font-size:10px">(R$&nbsp;932/m&ecirc;s em folha)</span>':''):'';
+  const invExtra=invGrand>0.01?`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">${_invParts.map(([k,v])=>`<span style="color:var(--mu)">${k}${_invNote(k)}</span><b style="color:${v<0?'var(--rd)':'var(--tx)'};text-align:right">${v<0?'&minus;&nbsp;':''}R$&nbsp;${fc(Math.abs(v))}</b><b style="color:${v<0?'var(--rd)':'#818cf8'};text-align:right">${(v/invGrand*100).toFixed(1)}%</b>`).join('')}<span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">Total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(invGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b></div>`:'';
   const kpiRow=(lbl,val,cl,sub,avgVal,extra,realV)=>`<div class="ck"><div class="kpi-lbl">${lbl}</div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="kpi-val ${cl}" style="${cl?'':'color:#22d3ee'}">R$ ${fc(val)}</div>${avg(avgVal)}</div><div class="kpi-sub">${_planMode?'Planejado &#8212; '+sub:sub}</div>${realV!==undefined?_rl(realV):''}${extra||''}</div>`;
   const patCard=patGrand>0.01?kpiRow('&#127968; Aquisi&ccedil;&atilde;o Patrim&ocirc;nio',patGrand,'',`${patPct} das receitas`,patGrand,'',_rPatG):'';
-  const kpi=`<div class="cg3">${kpiRow('&#128176; Receita',recGrand,'green','Total do per&iacute;odo',recGrand,recExtra,_rRecG)}${kpiRow('&#128200; Investimentos',invGrand,'purple',`${invPct} das receitas`,invGrand,'',_rInvG)}${kpiRow('&#128184; Despesas',desGrand,'red',`${desPct} das receitas`,desGrand,_desExtra,_rDesG)}${patCard}</div>`;
+  const kpi=`<div class="cg3">${kpiRow('&#128176; Receita',recGrand,'green','Total do per&iacute;odo',recGrand,recExtra,_rRecG)}${kpiRow('&#128200; Investimentos',invGrand,'purple',`${invPct} das receitas`,invGrand,invExtra,_rInvG)}${kpiRow('&#128184; Despesas',desGrand,'red',`${desPct} das receitas`,desGrand,_desExtra,_rDesG)}${patCard}</div>`;
   const rendItau=recGrand-divs;
   const _m2pct=ANO>=2027?0.3:0.5;const _m2base=ANO>=2027?salTotal:rendItau;
   const rendItau50=_m2base*_m2pct;
