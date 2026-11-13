@@ -2327,6 +2327,25 @@ function _assinaturasMensais(){
 }
 // planejado 2027: salario regular mensal = FOLHA PAGAMENTO de setembro/2026; PLR/13o/ferias/dividendos mantem.
 // despesa planejada = custos fixos (Moradia media + Mae) + assinaturas + parcelas. investir = dividendos + 30% renda Itau + previdencia.
+// Projeção de salário 2027 a partir dos lançamentos de 2026.
+// Reajuste = folha mensal de set/2026 ÷ mediana da folha mensal jan–ago/2026.
+// Jan–Ago/2027: mês de 2026 × reajuste (sobe pro nível pós-dissídio, mantendo sazonalidade: férias, PLR, 13º).
+// Set–Dez/2027: nível de set/2026 × reajuste (assume novo dissídio do mesmo % em set/2027).
+function _sal27(){
+  const z=()=>({reg:0,plr:0,d13:0,fer:0,out:0});const M=Array.from({length:12},z);
+  INVEST.forEach(r=>{if(r.tipo!=='entrada')return;const c=RI[r.id]||r.cat;if(!['Salário','PLR/Bônus','Décimo Terceiro','Férias'].includes(c))return;
+    const[,mm,yy]=r.date.split('/');if(yy!=='2026')return;const o=M[parseInt(mm)-1],d=r.desc.toUpperCase();
+    if(/FOLHA PAGAMENTO/.test(d))o.reg+=r.val;else if(c==='PLR/Bônus'||/PARTICIPACAO|PLR/.test(d))o.plr+=r.val;else if(c==='Décimo Terceiro'||/13/.test(d))o.d13+=r.val;else if(c==='Férias'||/FERIAS/.test(d))o.fer+=r.val;else o.out+=r.val;});
+  const base=M[8].reg;const pre=M.slice(0,8).map(o=>o.reg).filter(v=>v>0.01).sort((a,b)=>a-b);
+  const med=pre.length?(pre.length%2?pre[(pre.length-1)/2]:(pre[pre.length/2-1]+pre[pre.length/2])/2):base;
+  const r=base>0.01&&med>0.01?base/med:1;
+  const d13a=M.reduce((s,o)=>s+o.d13,0); // 1ª parcela do 13º (mai/2026)
+  const out=M.map((o,i)=>{const x=z();
+    if(i<8){x.reg=o.reg*r;x.plr=o.plr*r;x.d13=o.d13*r;x.fer=o.fer*r;x.out=o.out*r;}
+    else{x.reg=base*r;x.plr=o.plr*r;x.fer=o.fer*r;x.d13=i===11?d13a*r*r:o.d13*r;}
+    x.tot=x.reg+x.plr+x.d13+x.fer+x.out;return x;});
+  return{M:out,r,base,med,tot:out.reduce((s,x)=>s+x.tot,0)};
+}
 // Moradia: valor fixo do boleto mensal e reembolso da Flávia (editar aqui se mudar)
 const MORADIA_BOLETO=4700,MORADIA_FLAVIA=680;
 function planFull(){
@@ -2355,7 +2374,7 @@ function planFull(){
   const _PREV=932.24;
   // 2ª parcela do 13º (dezembro): sem lançamento histórico ainda (mês futuro); usa o mesmo valor bruto da 1ª
   // parcela (maio/2026) como estimativa — na prática vem com mais desconto de INSS/IRRF e pode ser um pouco menor.
-  const _13SegParc=11652.99;
+  
   // meses de 2026 ainda incompletos (mês atual, parcial) ou futuros (sem nenhum lançamento) não servem de base
   // real pro dividendo projetado — substitui pela média dos meses já encerrados, senão nov/dez de 2027 saem zerados.
   const _hj=new Date();const _ordHj=_hj.getFullYear()*12+_hj.getMonth();
@@ -2365,22 +2384,19 @@ function planFull(){
   const divAvgCompleto=_mesesCompletos.length?_mesesCompletos.reduce((s,m)=>s+_dmRealByM[m],0)/_mesesCompletos.length:0;
   const rec=[],inv=[],des=[],pat=[];const cats={r:{},i:{},d:{},p:{}};
   let inv30Sum=0,divSum=0;
-  MM.forEach(m=>{
+  const S27=_sal27();
+  MM.forEach((m,mi)=>{
     const m27=m.replace('/2026','/2027');
     let rs=0,sal=0,dm=0;
     [iM[m],dM[m]].forEach(M=>{if(M)Object.entries(M).forEach(([c,v])=>{const t=CG[c]||'';
-      if(t==='r'){const e=v.e||0;cats.r[c]=(cats.r[c]||0)+e;rs+=e;if(c==='Dividendos'||c==='JSCP')dm+=e;else if(c==='Salário')sal+=e;}});});
-    // mês ainda não encerrado em 2026: completa o dividendo parcial/zerado com a média dos meses encerrados
-    if(_om(m)>=_ordHj){
-      const _delta=divAvgCompleto-dm;
-      if(_delta>0){cats.r['Dividendos (estimativa)']=(cats.r['Dividendos (estimativa)']||0)+_delta;rs+=_delta;dm+=_delta;}
-    }
-    // 2ª parcela do 13º cai em dezembro e ainda não tinha lançamento em Dez/2026 (mês futuro)
-    if(m.split('/')[0]==='Dez'){cats.r['Décimo Terceiro (2ª parcela)']=(cats.r['Décimo Terceiro (2ª parcela)']||0)+_13SegParc;rs+=_13SegParc;}
-    // troca salario regular do mes pelo de setembro (base fixa escolhida; out/2026 foi atípico)
-    const reg=regSalByM[m]||0;
-    rs=rs-reg+salOutReg;sal=sal-reg+salOutReg;
-    cats.r['Salário']=(cats.r['Salário']||0)-reg+salOutReg;
+      if(t!=='r')return;const e=v.e||0;
+      if(c==='Dividendos'||c==='JSCP'){dm+=e;return;}
+      if(['Salário','PLR/Bônus','Décimo Terceiro','Férias'].includes(c))return; // salário vem da projeção _sal27
+      cats.r[c]=(cats.r[c]||0)+e;rs+=e;});});
+    // mês de 2026 ainda não encerrado: dividendo parcial/zerado vira a média dos meses encerrados
+    if(_om(m)>=_ordHj&&divAvgCompleto>dm)dm=divAvgCompleto;
+    cats.r['Dividendos']=(cats.r['Dividendos']||0)+dm;rs+=dm;
+    sal=S27.M[mi].tot;cats.r['Salário']=(cats.r['Salário']||0)+sal;rs+=sal;
     const inv30=sal*0.3;inv30Sum+=inv30;divSum+=dm;
     const parc=parcByM[m27]||0;
     const ds=fxMoradia+fxMae+subsTot+parc;
@@ -2719,7 +2735,7 @@ function rDash(){
   const _salVals=_salValsND.length?_salValsND:Object.values(_salByM).filter(v=>v>0.01);
   const _regSalBM={};INVEST.forEach(r=>{if(r.tipo==='entrada'&&/FOLHA PAGAMENTO/i.test(r.desc)){const _mm=_gmd(r.date);_regSalBM[_mm]=(_regSalBM[_mm]||0)+r.val;}});
   const _regVals=Object.values(_regSalBM).filter(v=>v>0.01);
-  const _recAvg=ANO>=2027?(_regSalBM['Set/2026']||0):(_regVals.length?_regVals.reduce((a,b)=>a+b,0)/_regVals.length:0);
+  const _S27=ANO>=2027?_sal27():null;const _recAvg=ANO>=2027?_S27.base*_S27.r:(_regVals.length?_regVals.reduce((a,b)=>a+b,0)/_regVals.length:0);
   // 13º e Férias: scan separado para adicionar nos meses históricos correspondentes
   const _extrasProj={};
   INVEST.forEach(r=>{
@@ -2744,7 +2760,7 @@ function rDash(){
     const _mesNum=m=>_ordM(m)%12; // 0=Jan..11=Dez
     const extrasHist=Object.entries(_extrasProj).filter(([m])=>_mesNum(m)===_mesNum(mes));
     const extrasTot=extrasHist.reduce((s,[,mc])=>s+Object.values(mc).reduce((a,b)=>a+b,0),0);
-    const totalRec=_recAvg+extrasTot;
+    const totalRec=_S27?_S27.M[_mesNum(mes)].tot:_recAvg+extrasTot;
     const totDes=_fxTotal+parcTot;const saldo=totalRec-totDes;const sc=saldo>=0?'var(--gr)':'var(--rd)';
     const _row=(lbl,val,mu)=>`<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px" title="${lbl}"><span style="color:var(--mu);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mu?lbl:lbl}</span><span>R$ ${fc(val)}</span></div>`;
     const _rowCred=(lbl,bruto,cred)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-top:4px"><span style="color:var(--mu);max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${lbl}">${lbl}</span><span style="display:flex;gap:6px;align-items:baseline;white-space:nowrap"><span style="color:var(--mu);font-size:10px">R$ ${fc(bruto)}</span><span style="color:var(--rd);font-size:10px">&minus;${fc(cred)}</span><span style="color:var(--mu);font-size:10px">&#8594;</span><span style="color:var(--tx);font-weight:700">R$ ${fc(Math.max(0,bruto-cred))}</span></span></div>`;
@@ -2768,8 +2784,8 @@ function rDash(){
     const subSec=subRows?`<div class="kpi-lbl" style="margin-top:10px">Assinaturas</div>${subRows}${subTotRow}`:'';
     return `<div class="ck" style="min-width:240px;flex:0 0 auto"><div style="font-size:17px;font-weight:800;margin-bottom:14px;color:var(--ac)">${mes}</div>${recSec}<div class="kpi-lbl">Custos fixos</div>${fxRows}${fxTotRow}${subSec}${parcSec}${bottomSec}</div>`;
   }).join('');
-  const _brk=[];if(_is27){_brk.push(`Base: sal&aacute;rio de setembro R$&nbsp;${fc(_recAvg)}/m&#234;s &#8212; PLR, 13&ordm;, f&eacute;rias e dividendos mantidos de 2026`);}else{if(_recAvg>0.01)_brk.push(`Sal&#225;rio&nbsp;R$&nbsp;${fc(_recAvg)}/m&#234;s&nbsp;&#215;&nbsp;12&nbsp;=&nbsp;<b>R$&nbsp;${fc(_recAvg*12)}</b>`);if(_anu13>0.01)_brk.push(`D&#233;cimo Terceiro&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anu13)}</b>`);if(_anuFer>0.01)_brk.push(`F&#233;rias&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuFer)}</b>`);if(_anuPlr>0.01)_brk.push(`PLR/B&#244;nus&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuPlr)}</b>`);}
-  const projHeader=_recAvg>0.01?`<div class="ck" style="margin-bottom:18px"><div class="kpi-lbl">&#128200; ${_is27?'Proje&#231;&atilde;o Anual (planejado)':'Proje&#231;&atilde;o de Sal&#225;rio Anual'}</div><div style="font-size:11px;color:var(--mu);margin:6px 0 12px;line-height:1.8">${_brk.join('&nbsp;&nbsp;+&nbsp;&nbsp;')}</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px"><div><div style="font-size:11px;color:var(--mu)">${_is27?'Receita planejada (ano)':'Total anual estimado'}</div><div style="font-size:22px;font-weight:800;color:var(--gr)">R$&nbsp;${fc(_salAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">${_is27?'Investir (ano)':'50% &#8212; para guardar'}</div><div style="font-size:22px;font-weight:800;color:#818cf8">R$&nbsp;${fc(_metaInvAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">${_is27?'Despesas planejadas (ano)':'50% &#8212; para gastar'}</div><div style="font-size:22px;font-weight:800;color:var(--ac)">R$&nbsp;${fc(_salAnual50)}</div></div><div style="background:rgba(34,211,238,.08);border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">Gasto mensal dispon&#237;vel</div><div style="font-size:24px;font-weight:900;color:var(--ac)">R$&nbsp;${fc(_gMensal)}<span style="font-size:12px;font-weight:400;color:var(--mu)">/m&#234;s</span></div><div style="font-size:10px;color:var(--mu);margin-top:3px">${_is27?'= (receita &#8722; invest. sem previd&ecirc;ncia) &#247; 12':'= 50% do sal&aacute;rio mensal'}</div></div></div></div>`:'';
+  const _brk=[];if(_is27){const _pct=((_S27.r-1)*100).toFixed(1).replace('.',',');_brk.push(`Reajuste de set/2026: folha R$&nbsp;${fc(_S27.base)} vs mediana jan&ndash;ago R$&nbsp;${fc(_S27.med)} = <b>+${_pct}%</b>`);_brk.push(`Jan&ndash;Ago/27: cada m&ecirc;s de 2026 (sal&aacute;rio, PLR, 13&ordm;, f&eacute;rias) +${_pct}%`);_brk.push(`Set&ndash;Dez/27: novo diss&iacute;dio estimado +${_pct}% &rarr; folha R$&nbsp;${fc(_recAvg)}/m&ecirc;s`);_brk.push(`Sal&aacute;rio total 2027 = <b>R$&nbsp;${fc(_S27.tot)}</b>`);}else{if(_recAvg>0.01)_brk.push(`Sal&#225;rio&nbsp;R$&nbsp;${fc(_recAvg)}/m&#234;s&nbsp;&#215;&nbsp;12&nbsp;=&nbsp;<b>R$&nbsp;${fc(_recAvg*12)}</b>`);if(_anu13>0.01)_brk.push(`D&#233;cimo Terceiro&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anu13)}</b>`);if(_anuFer>0.01)_brk.push(`F&#233;rias&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuFer)}</b>`);if(_anuPlr>0.01)_brk.push(`PLR/B&#244;nus&nbsp;=&nbsp;<b>R$&nbsp;${fc(_anuPlr)}</b>`);}
+  const projHeader=_recAvg>0.01?`<div class="ck" style="margin-bottom:18px"><div class="kpi-lbl">&#128200; ${_is27?'Proje&#231;&atilde;o Anual (planejado)':'Proje&#231;&atilde;o de Sal&#225;rio Anual'}</div><div style="font-size:11px;color:var(--mu);margin:6px 0 12px;line-height:1.8">${_is27?_brk.join('<br>'):_brk.join('&nbsp;&nbsp;+&nbsp;&nbsp;')}</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px"><div><div style="font-size:11px;color:var(--mu)">${_is27?'Receita planejada (ano)':'Total anual estimado'}</div><div style="font-size:22px;font-weight:800;color:var(--gr)">R$&nbsp;${fc(_salAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">${_is27?'Investir (ano)':'50% &#8212; para guardar'}</div><div style="font-size:22px;font-weight:800;color:#818cf8">R$&nbsp;${fc(_metaInvAnual)}</div></div><div><div style="font-size:11px;color:var(--mu)">${_is27?'Despesas planejadas (ano)':'50% &#8212; para gastar'}</div><div style="font-size:22px;font-weight:800;color:var(--ac)">R$&nbsp;${fc(_salAnual50)}</div></div><div style="background:rgba(34,211,238,.08);border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">Gasto mensal dispon&#237;vel</div><div style="font-size:24px;font-weight:900;color:var(--ac)">R$&nbsp;${fc(_gMensal)}<span style="font-size:12px;font-weight:400;color:var(--mu)">/m&#234;s</span></div><div style="font-size:10px;color:var(--mu);margin-top:3px">${_is27?'= (receita &#8722; invest. sem previd&ecirc;ncia) &#247; 12':'= 50% do sal&aacute;rio mensal'}</div></div></div></div>`:'';
   const projSection=_pMes.length?`<div class="dash-sec">&#128302; Proje&#231;&atilde;o</div>${projHeader}<div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:10px">${_pCards}</div>`:'';
   document.getElementById('dc').innerHTML=
     `<div class="dash-sec">&#128202; Vis&atilde;o Geral</div>${kpi}`
@@ -2780,7 +2796,7 @@ function rDash(){
     +`<div class="cg3"><div class="ck"><h3>Receita</h3><p>Por categoria</p><canvas id="ch-cat-r"></canvas></div><div class="ck"><h3>Investimentos</h3><p>Por categoria</p><canvas id="ch-cat-i"></canvas></div><div class="ck"><h3>Despesas</h3><p>Por categoria</p><canvas id="ch-cat-d"></canvas></div>${patCat}</div>`
     +projSection;
   const fmtR=v=>{if(!v||v<=0.01)return'';if(v>=1e6)return'R$'+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+'M';if(v>=1e3)return'R$'+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k';return'R$'+Math.round(v);};
-  const lbls=MA.map(m=>m.split('/2026')[0]);
+  const lbls=MA.map(m=>m.split('/')[0]);
   const _goMes=mes=>{lnSrc='a';mAll=mes;colF={date:'',desc:'',tipo:'',cat:'',src:'',mes:''};sp(0);};
   const _goCat=cat=>{lnSrc='a';mAll='all';colF={date:'',desc:'',tipo:'',cat,src:'',mes:''};sp(0);};
   const _hover=(evt,els)=>{evt.native.target.style.cursor=els.length?'pointer':'default';};
