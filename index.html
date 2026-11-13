@@ -63,7 +63,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(108,99,255,.06)}
 .ck{background:var(--bg2);border-radius:12px;padding:18px;border:1px solid var(--br);min-width:0;overflow:hidden}
 .ck h3{font-size:16px;font-weight:700;margin-bottom:4px}.ck p{font-size:12px;color:var(--mu);margin-bottom:14px}
 .dash-sec{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin:28px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--br)}
-.ck canvas{height:300px!important}
+.ck canvas{height:340px!important}
 .dash-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:18px}
 .kpi-card{background:var(--bg2);border-radius:14px;padding:22px 24px;border:1px solid var(--br)}
 .kpi-lbl{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu);font-weight:600;margin-bottom:8px}
@@ -2327,6 +2327,8 @@ function _assinaturasMensais(){
 }
 // planejado 2027: salario regular mensal = FOLHA PAGAMENTO de setembro/2026; PLR/13o/ferias/dividendos mantem.
 // despesa planejada = custos fixos (Moradia media + Mae) + assinaturas + parcelas. investir = dividendos + 30% renda Itau + previdencia.
+// Moradia: valor fixo do boleto mensal e reembolso da Flávia (editar aqui se mudar)
+const MORADIA_BOLETO=4700,MORADIA_FLAVIA=680;
 function planFull(){
   const {dM,iM}=bMaps();const MM=_mesesAno('2026');
   const MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2341,7 +2343,7 @@ function planFull(){
   const _fxByM={};
   DIARIA.forEach(r=>{const c=RD[r.id]||r.cat;if(r.tipo!=='saida'||c!=='Moradia')return;const m=_gmd(r.date);_fxByM[m]=(_fxByM[m]||0)+r.val;});
   const _mvs=Object.values(_fxByM).filter(v=>v>0.01);
-  const fxMoradia=_mvs.length?Math.max(0,_mvs.reduce((a,b)=>a+b,0)/_mvs.length-680):0;
+  const fxMoradia=MORADIA_BOLETO-MORADIA_FLAVIA;
   const fxMae=500;
   // assinaturas mensais
   const _subs=_assinaturasMensais();const subsTot=_subs.reduce((s,x)=>s+x.val,0);
@@ -2581,7 +2583,7 @@ function rLanc(vt){
 
 function dxc(id){if(_ch[id]){_ch[id].destroy();delete _ch[id];}}
 function mkc(id,type,data,opts,pl){dxc(id);const ctx=document.getElementById(id);if(!ctx)return;
-  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{callbacks:{label:x=>{const v=x.parsed.y??x.parsed;return' R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0});}}}},scales:type==='pie'||type==='doughnut'?undefined:{x:{ticks:{color:'#94a3b8'},grid:{color:'#2d3148'}},y:{ticks:{color:'#94a3b8',callback:v=>'R$'+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0})},grid:{color:'#2d3148'}}}};
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#e2e8f0',font:{size:14}}},tooltip:{callbacks:{label:x=>{const v=x.parsed.y??x.parsed;return' R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0});}}}},scales:type==='pie'||type==='doughnut'?undefined:{x:{ticks:{color:'#94a3b8'},grid:{color:'#2d3148'}},y:{ticks:{color:'#94a3b8',callback:v=>'R$'+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0})},grid:{color:'#2d3148'}}}};
   _ch[id]=new Chart(ctx,{type,data,options:{...base,...opts},plugins:pl||[]});}
 
 function rDash(){
@@ -2598,7 +2600,7 @@ function rDash(){
   const _prevTot=_planMode?((_cats.i&&_cats.i['Previdência'])||0):0;
   const _invSemPrev=invGrand-_prevTot;
   const _saldoSobra=(recGrand-_invSemPrev)-desGrand;
-  const _desExtra=_planMode?`<div style="margin-top:6px;border-top:1px solid var(--br);padding-top:5px"><span style="font-size:11px;color:var(--mu)">Sobra p/ você&nbsp;<b style="color:var(--gr)">R$&nbsp;${fc(_saldoSobra)}</b>&nbsp;<span style="color:var(--mu)">(&#8776;&nbsp;R$&nbsp;${fc(_saldoSobra/12)}/mês)</span></span></div>`:'';
+  const _desExtra=_planMode?`<div style="margin-top:6px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px"><span style="color:var(--mu)">Receita</span><b style="text-align:right">R$&nbsp;${fc(recGrand)}</b><span style="color:var(--mu)">&minus; Investimentos</span><b style="text-align:right">R$&nbsp;${fc(invGrand)}</b>${_prevTot>0.01?`<span style="color:var(--mu)">+ Previd&ecirc;ncia <span style="font-size:10px">(descontada em folha, n&atilde;o est&aacute; na receita)</span></span><b style="text-align:right">R$&nbsp;${fc(_prevTot)}</b>`:''}<span style="color:var(--mu)">&minus; Despesas</span><b style="text-align:right">R$&nbsp;${fc(desGrand)}</b><span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">= Sobra p/ voc&ecirc;</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right;color:var(--gr)">R$&nbsp;${fc(_saldoSobra)} <span style="color:var(--mu);font-weight:400">(&#8776;&nbsp;R$&nbsp;${fc(_saldoSobra/12)}/m&ecirc;s)</span></b></div>`:'';
   const _invProg=_planMode?_rInvG:invGrand;
   const nM=MA.filter((_,i)=>(_gRec[i]||0)+(_gInv[i]||0)+(_gDes[i]||0)+((_gPat||[])[i]||0)>0.01).length||1;
   const avg=(v)=>`<span style="font-size:14px;font-weight:600;color:var(--mu);white-space:nowrap">&#8776; R$&nbsp;${fc(v/nM)}<span style="font-size:11px;font-weight:400">/mês</span></span>`;
@@ -2609,7 +2611,9 @@ function rDash(){
   const salTotal=_cats.r['Salário']||0;
   const salPct=recGrand>0?(salTotal/recGrand*100).toFixed(1)+'%':'—';
   const divPct2=recGrand>0?(divs/recGrand*100).toFixed(1)+'%':'—';
-  const recExtra=recGrand>0.01?`<div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--mu)">Sal&#225;rio&nbsp;<b style="color:var(--tx)">R$&nbsp;${fc(salTotal)}</b>&nbsp;<b style="color:var(--gr)">(${salPct})</b></span><span style="font-size:11px;color:var(--mu)">Dividendos&nbsp;<b style="color:var(--tx)">R$&nbsp;${fc(divs)}</b>&nbsp;<b style="color:#818cf8">(${divPct2})</b></span></div>`:'';
+  const _recParts=Object.entries(_cats.r||{}).filter(([,v])=>Math.abs(v)>0.01).sort((a,b)=>b[1]-a[1]);
+  const _recDiff=recGrand-_recParts.reduce((a,[,v])=>a+v,0);if(Math.abs(_recDiff)>0.5)_recParts.push(['Outros',_recDiff]);
+  const recExtra=recGrand>0.01?`<div style="margin-top:8px;border-top:1px solid var(--br);padding-top:6px;display:grid;grid-template-columns:1fr auto auto;gap:3px 10px;font-size:12px">${_recParts.map(([k,v])=>`<span style="color:var(--mu)">${k}</span><b style="color:var(--tx);text-align:right">R$&nbsp;${fc(v)}</b><b style="color:var(--gr);text-align:right">${(v/recGrand*100).toFixed(1)}%</b>`).join('')}<span style="border-top:1px solid var(--br);padding-top:3px;font-weight:700">Total</span><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">R$&nbsp;${fc(recGrand)}</b><b style="border-top:1px solid var(--br);padding-top:3px;text-align:right">100%</b></div>`:'';
   const kpiRow=(lbl,val,cl,sub,avgVal,extra,realV)=>`<div class="ck"><div class="kpi-lbl">${lbl}</div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="kpi-val ${cl}" style="${cl?'':'color:#22d3ee'}">R$ ${fc(val)}</div>${avg(avgVal)}</div><div class="kpi-sub">${_planMode?'Planejado &#8212; '+sub:sub}</div>${realV!==undefined?_rl(realV):''}${extra||''}</div>`;
   const patCard=patGrand>0.01?kpiRow('&#127968; Aquisi&ccedil;&atilde;o Patrim&ocirc;nio',patGrand,'',`${patPct} das receitas`,patGrand,'',_rPatG):'';
   const kpi=`<div class="cg3">${kpiRow('&#128176; Receita',recGrand,'green','Total do per&iacute;odo',recGrand,recExtra,_rRecG)}${kpiRow('&#128200; Investimentos',invGrand,'purple',`${invPct} das receitas`,invGrand,'',_rInvG)}${kpiRow('&#128184; Despesas',desGrand,'red',`${desPct} das receitas`,desGrand,_desExtra,_rDesG)}${patCard}</div>`;
@@ -2677,7 +2681,7 @@ function rDash(){
   const _fxAvg={Moradia:0};
   const _mvs=Object.values(_fxByMK).map(m=>m['Moradia']||0).filter(v=>v>0.01);
   // bruto (reembolso Flávia aplicado só uma vez, abaixo em _flaMor)
-  _fxAvg['Moradia']=_mvs.length?_mvs.reduce((a,b)=>a+b,0)/_mvs.length:0;
+  _fxAvg['Moradia']=MORADIA_BOLETO;
   // Assinaturas: qualquer origem (DIARIA, INVEST, CARTAO) com cat=Assinaturas
   const _isSub=cat=>['Assinatura','Assinaturas','Hobby/Assin.'].includes(cat);
   // padrões de assinaturas conhecidas (mesmo que a categoria não esteja como Assinatura)
@@ -2700,7 +2704,7 @@ function rDash(){
   _subs.sort((a,b)=>b.val-a.val);
   const _subsTot=_subs.reduce((s,{val})=>s+val,0);
   const _fxMae=500;
-  const _flaMor=680,_flaArajet=688;const _fxTotal=Math.max(0,(_fxAvg['Moradia']||0)-_flaMor)+_fxMae+_subsTot;
+  const _flaMor=MORADIA_FLAVIA,_flaArajet=688;const _fxTotal=Math.max(0,(_fxAvg['Moradia']||0)-_flaMor)+_fxMae+_subsTot;
   // Salário estimado: usa categoria original do PDF (r.cat), ignora overrides
   // Exclui meses com Dividendos (também pela categoria original)
   const _salByM={};
@@ -2780,14 +2784,14 @@ function rDash(){
   const _goMes=mes=>{lnSrc='a';mAll=mes;colF={date:'',desc:'',tipo:'',cat:'',src:'',mes:''};sp(0);};
   const _goCat=cat=>{lnSrc='a';mAll='all';colF={date:'',desc:'',tipo:'',cat,src:'',mes:''};sp(0);};
   const _hover=(evt,els)=>{evt.native.target.style.cursor=els.length?'pointer':'default';};
-  const co={responsive:true,maintainAspectRatio:false,layout:{padding:{top:18}},plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',clamp:true,color:'#ffffff',backgroundColor:'rgba(2,6,23,0.88)',borderRadius:5,padding:{top:3,bottom:3,left:6,right:6},font:{size:13,weight:'700'},formatter:fmtR}},scales:{y:{display:false,grid:{display:false},grace:'18%'},x:{grid:{display:false},ticks:{color:'#e2e8f0',font:{size:12,weight:'600'}}}},onClick:(evt,els)=>{if(els.length)_goMes(MA[els[0].index]);},onHover:_hover};
-  const mk=(id,data,color,lbl,ov,ovLbl)=>{const ex=Chart.getChart(id);if(ex)ex.destroy();const ds=[{label:lbl,data,backgroundColor:color+'55',borderColor:color,borderWidth:1.5,borderRadius:6}];if(ov)ds.push({label:ovLbl||'Realizado',data:ov,backgroundColor:'rgba(148,163,184,0.18)',borderColor:'#94a3b8',borderWidth:1.5,borderRadius:6});const opt=ov?Object.assign({},co,{plugins:Object.assign({},co.plugins,{legend:{display:true,labels:{color:'#e2e8f0',font:{size:11},boxWidth:12}},datalabels:{display:false}})}):co;return new Chart(document.getElementById(id),{type:'bar',data:{labels:lbls,datasets:ds},options:opt,plugins:[ChartDataLabels]});}
+  const co={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:22}},plugins:{tooltip:{enabled:true,backgroundColor:'rgba(2,6,23,0.95)',titleFont:{size:15,weight:'700'},bodyFont:{size:14},padding:10,callbacks:{label:x=>{const v=x.parsed[x.chart.options.indexAxis==='y'?'x':'y'];return' '+(x.dataset.label?x.dataset.label+': ':'')+'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}}},legend:{display:false},datalabels:{anchor:'end',align:'end',clamp:true,color:'#ffffff',backgroundColor:'rgba(2,6,23,0.88)',borderRadius:5,padding:{top:3,bottom:3,left:6,right:6},font:{size:15,weight:'700'},formatter:fmtR}},scales:{y:{display:false,grid:{display:false},grace:'20%'},x:{grid:{display:false},ticks:{color:'#e2e8f0',font:{size:15,weight:'600'}}}},onClick:(evt,els)=>{if(els.length)_goMes(MA[els[0].index]);},onHover:_hover};
+  const mk=(id,data,color,lbl,ov,ovLbl)=>{const ex=Chart.getChart(id);if(ex)ex.destroy();const ds=[{label:lbl,data,backgroundColor:color+'55',borderColor:color,borderWidth:1.5,borderRadius:6}];if(ov)ds.push({label:ovLbl||'Realizado',data:ov,backgroundColor:'rgba(148,163,184,0.18)',borderColor:'#94a3b8',borderWidth:1.5,borderRadius:6});const opt=ov?Object.assign({},co,{plugins:Object.assign({},co.plugins,{legend:{display:true,labels:{color:'#e2e8f0',font:{size:14},boxWidth:14}},datalabels:{display:false}})}):co;return new Chart(document.getElementById(id),{type:'bar',data:{labels:lbls,datasets:ds},options:opt,plugins:[ChartDataLabels]});}
   mk('ch-rec',_gRec,'#4ade80',_planMode?'Planejado':'Receita',_planMode?_realRec:null,'Realizado');
   mk('ch-inv',_gInv,'#818cf8',_planMode?'Planejado':'Investimentos',_planMode?_realInv:null,'Realizado');
   mk('ch-des',_gDes,'#f87171',_planMode?'Planejado':'Despesas',_planMode?_realDes:null,'Realizado');
   if(hasPat)mk('ch-pat',_gPat,'#22d3ee','Patrimônio');
   const srt=obj=>Object.entries(obj).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
-  const mkCat=(id,entries,color)=>{const el=document.getElementById(id);const exc=Chart.getChart(id);if(exc)exc.destroy();el.style.height=entries.length*30+20+'px';new Chart(el,{type:'bar',data:{labels:entries.map(e=>e.k),datasets:[{data:entries.map(e=>e.v),backgroundColor:color+'55',borderColor:color,borderWidth:1.5,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:68}},plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',offset:4,clamp:true,color:'#ffffff',backgroundColor:'rgba(2,6,23,0.88)',borderRadius:5,padding:{top:3,bottom:3,left:6,right:6},font:{size:13,weight:'700'},formatter:v=>'R$'+v.toLocaleString('pt-BR',{maximumFractionDigits:0})}},scales:{x:{display:false,grid:{display:false}},y:{grid:{display:false},ticks:{font:{size:12,weight:'600'},color:'#e2e8f0'}}},onClick:(evt,els)=>{if(els.length)_goCat(entries[els[0].index].k);},onHover:_hover},plugins:[ChartDataLabels]});};
+  const mkCat=(id,entries,color)=>{const el=document.getElementById(id);const exc=Chart.getChart(id);if(exc)exc.destroy();el.style.setProperty('height',entries.length*38+24+'px','important');new Chart(el,{type:'bar',data:{labels:entries.map(e=>e.k),datasets:[{data:entries.map(e=>e.v),backgroundColor:color+'55',borderColor:color,borderWidth:1.5,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false,axis:'y'},layout:{padding:{right:90}},plugins:{tooltip:{enabled:true,backgroundColor:'rgba(2,6,23,0.95)',titleFont:{size:15,weight:'700'},bodyFont:{size:14},padding:10,callbacks:{label:x=>{const v=x.parsed[x.chart.options.indexAxis==='y'?'x':'y'];return' '+(x.dataset.label?x.dataset.label+': ':'')+'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}}},legend:{display:false},datalabels:{anchor:'end',align:'end',offset:4,clamp:true,color:'#ffffff',backgroundColor:'rgba(2,6,23,0.88)',borderRadius:5,padding:{top:3,bottom:3,left:6,right:6},font:{size:14,weight:'700'},formatter:v=>'R$'+v.toLocaleString('pt-BR',{maximumFractionDigits:0})}},scales:{x:{display:false,grid:{display:false}},y:{grid:{display:false},ticks:{font:{size:14,weight:'600'},color:'#e2e8f0'}}},onClick:(evt,els)=>{if(els.length)_goCat(entries[els[0].index].k);},onHover:_hover},plugins:[ChartDataLabels]});};
   mkCat('ch-cat-r',srt(_cats.r),'#4ade80');
   mkCat('ch-cat-i',srt(_cats.i),'#818cf8');
   mkCat('ch-cat-d',srt(_cats.d),'#f87171');
