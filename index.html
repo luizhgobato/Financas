@@ -2404,8 +2404,7 @@ function planFull(){
       if(c==='Dividendos'||c==='JSCP'){dm+=e;return;}
       if(['Salário','PLR/Bônus','Décimo Terceiro','Férias'].includes(c))return; // salário vem da projeção _sal27
       cats.r[c]=(cats.r[c]||0)+e;rs+=e;});});
-    // mês de 2026 ainda não encerrado: dividendo parcial/zerado vira a média dos meses encerrados
-    if(_om(m)>=_ordHj&&divAvgCompleto>dm)dm=divAvgCompleto;
+    // dividendos 2027 = exatamente o recebido em 2026 (sem estimativa, sem aumento)
     cats.r['Dividendos']=(cats.r['Dividendos']||0)+dm;rs+=dm;
     sal=S27.M[mi].tot;cats.r['Salário']=(cats.r['Salário']||0)+sal;rs+=sal;
     const inv30=sal*0.3;inv30Sum+=inv30;divSum+=dm;
