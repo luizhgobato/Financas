@@ -1966,7 +1966,7 @@ const RC=JSON.parse(localStorage.getItem('gf26_c')||'{}');
 const svD=()=>localStorage.setItem('gf26_d',JSON.stringify(RD));
 const svI=()=>localStorage.setItem('gf26_i',JSON.stringify(RI));
 const svC=()=>localStorage.setItem('gf26_c',JSON.stringify(RC));
-const ec=(r,rc)=>rc[r.id]||r.cat;
+const ec=(r,rc)=>/raia\s*li/i.test(r.desc)?'Assinatura':(rc[r.id]||r.cat); // natação Teo = assinatura
 const gm=d=>{const p=d.split('/');if(p.length!==3)return'';const L=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];return L[parseInt(p[1])-1]+'/'+p[2];};
 const fm=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fc=v=>v>0.01?v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}):'-';
@@ -2308,11 +2308,11 @@ function _assinaturasMensais(){
   const _ordM=m=>{const[s,y]=m.split('/');return parseInt(y)*12+MN.indexOf(s);};
   const _gmd=d=>{const[,mm,yy]=d.split('/');return MN[parseInt(mm)-1]+'/'+yy;};
   const _isSub=cat=>['Assinatura','Assinaturas','Hobby/Assin.'].includes(cat);
-  const _subPat=['totalpass','claro','netflix','combinaqui','youtube','vindi *agf','vindi*agf','vindi  *agf','vindi *investidor','vindi  *investidor','amazon servicos','apple.com/bill'];
+  const _subPat=['totalpass','claro','netflix','combinaqui','youtube','vindi *agf','vindi*agf','vindi  *agf','vindi *investidor','vindi  *investidor','apple.com/bill'];
   const _normS=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
   const _subKey=desc=>{let s=_normS(desc);s=s.replace(/\d{1,2}\s*\/\s*\d{1,2}\s*$/,'');s=s.replace(/\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\s*\/\s*\d{0,4}$/,'');s=s.replace(/mensalidade/g,'');s=s.replace(/[^a-z]+/g,' ').trim();return s.replace(/\s+/g,' ');};
   const _subLabel=desc=>{let s=desc.replace(/\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,'');s=s.replace(/\s*\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\s*\/\s*\d{0,4}\s*$/i,'');s=s.replace(/^Mensalidade\s+/i,'');return s.replace(/\s{2,}/g,' ').trim();};
-  const _isCandSub=(desc,cat)=>{const d=_normS(desc);return _isSub(cat)||_subPat.some(p=>d.includes(p));};
+  const _isCandSub=(desc,cat)=>{const d=_normS(desc);if(SUB_EXCLUIR.some(p=>d.includes(p)))return false;return _isSub(cat)||_subPat.some(p=>d.includes(p));};
   const _todayMes=(()=>{const d=new Date();return MN[d.getMonth()]+'/'+d.getFullYear();})();
   const _subHi=_ordM(_todayMes),_subLo=_subHi-3;
   const _subG={};
@@ -2321,7 +2321,7 @@ function _assinaturasMensais(){
   INVEST.forEach(r=>{const c=RI[r.id]||r.cat;if(r.tipo==='saida'&&_isCandSub(r.desc,c))_scanSub(r.desc,r.val,_gmd(r.date));});
   CARTAO.forEach(r=>{const c=RC[r.id]||r.cat;if(_isCandSub(r.desc,c))_scanSub(r.desc,r.val,r.mes);});
   let _subs=Object.values(_subG).filter(g=>Object.keys(g.mon).length>=2).map(g=>({desc:_subLabel(g.desc),val:g.val}));
-  _subs.push({desc:'Raia Livre (Teo)',val:269});
+  _subs.push(...SUB_FIXAS);
   _subs.sort((a,b)=>b.val-a.val);
   return _subs;
 }
@@ -2359,6 +2359,14 @@ function _sal27(){
 }
 // Moradia: valor fixo do boleto mensal e reembolso da Flávia (editar aqui se mudar)
 const MORADIA_BOLETO=4700,MORADIA_FLAVIA=680;
+// Reajuste do aluguel a partir de mar/2027: IGP-M acumulado 12 meses (out/2026 = 5,24%, FGV). Trocar quando sair o índice de fev/2027.
+const ALUGUEL_REAJ=0.0524,ALUGUEL_REAJ_INI=2027*12+2; // mar/2027
+const moradiaMes=(ano,mi)=>ano*12+mi>=ALUGUEL_REAJ_INI?MORADIA_BOLETO*(1+ALUGUEL_REAJ):MORADIA_BOLETO;
+// Assinaturas fixas (não dependem da detecção automática) e anuais (cobradas 1x no mês indicado, 0=jan)
+const SUB_FIXAS=[{desc:'Natação Teo (Raia Livre)',val:269}];
+const SUB_ANUAIS=[{desc:'Amazon Prime (anual)',val:166.80,mes:2}];
+// fora da detecção automática: Raia Livre (já em SUB_FIXAS), Amazon mensal cancelada, Amazon Prime anual (em SUB_ANUAIS)
+const SUB_EXCLUIR=['raia livre','raialivre','amazon servicos','amazonprime','amazon prime'];
 function planFull(){
   const {dM,iM}=bMaps();const MM=_mesesAno('2026');
   const MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2373,7 +2381,7 @@ function planFull(){
   const _fxByM={};
   DIARIA.forEach(r=>{const c=RD[r.id]||r.cat;if(r.tipo!=='saida'||c!=='Moradia')return;const m=_gmd(r.date);_fxByM[m]=(_fxByM[m]||0)+r.val;});
   const _mvs=Object.values(_fxByM).filter(v=>v>0.01);
-  const fxMoradia=MORADIA_BOLETO-MORADIA_FLAVIA;
+  
   const fxMae=500;
   // assinaturas mensais
   const _subs=_assinaturasMensais();const subsTot=_subs.reduce((s,x)=>s+x.val,0);
@@ -2409,10 +2417,11 @@ function planFull(){
     sal=S27.M[mi].tot;cats.r['Salário']=(cats.r['Salário']||0)+sal;rs+=sal;
     const inv30=sal*0.3;inv30Sum+=inv30;divSum+=dm;
     const parc=parcByM[m27]||0;
-    const ds=fxMoradia+fxMae+subsTot+parc;
+    const fxMoradia=moradiaMes(2027,mi)-MORADIA_FLAVIA;const subAn=SUB_ANUAIS.filter(a=>a.mes===mi).reduce((t,a)=>t+a.val,0);
+    const ds=fxMoradia+fxMae+subsTot+subAn+parc;
     cats.d['Moradia']=(cats.d['Moradia']||0)+fxMoradia;
     cats.d['Mãe']=(cats.d['Mãe']||0)+fxMae;
-    cats.d['Assinaturas']=(cats.d['Assinaturas']||0)+subsTot;
+    cats.d['Assinaturas']=(cats.d['Assinaturas']||0)+subsTot+subAn;
     if(parc)cats.d['Parcelas cartão']=(cats.d['Parcelas cartão']||0)+parc;
     rec.push(rs);inv.push(dm+_PREV);_inv30M.push(inv30);des.push(ds);pat.push(0);
   });
@@ -2634,7 +2643,7 @@ function rDash(){
   const _invSemPrev=invGrand-_prevTot;
   const _saldoSobra=(recGrand-_invSemPrev)-desGrand;
   const _COMPR=['Moradia','Mãe','Assinaturas','Parcelas cartão'];
-  const _cmpNote={'Moradia':` <span style="font-size:10px">(R$&nbsp;${fc(MORADIA_BOLETO)} &minus; ${fc(MORADIA_FLAVIA)} Fl&aacute;via/m&ecirc;s)</span>`,'Mãe':' <span style="font-size:10px">(R$&nbsp;500/m&ecirc;s)</span>','Assinaturas':' <span style="font-size:10px">(recorrentes)</span>','Parcelas cartão':' <span style="font-size:10px">(j&aacute; lan&ccedil;adas)</span>'};
+  const _cmpNote={'Moradia':` <span style="font-size:10px">(R$&nbsp;${fc(MORADIA_BOLETO)} jan&ndash;fev, R$&nbsp;${fc(MORADIA_BOLETO*(1+ALUGUEL_REAJ))} a partir de mar com IGP-M +${(ALUGUEL_REAJ*100).toFixed(2).replace('.',',')}%; &minus; ${fc(MORADIA_FLAVIA)} Fl&aacute;via/m&ecirc;s)</span>`,'Mãe':' <span style="font-size:10px">(R$&nbsp;500/m&ecirc;s)</span>','Assinaturas':' <span style="font-size:10px">(recorrentes + Amazon Prime anual)</span>','Parcelas cartão':' <span style="font-size:10px">(j&aacute; lan&ccedil;adas)</span>'};
   const _line=(k,v,cl,pct)=>`<span style="color:var(--mu)">${k}</span><b style="color:${cl||'var(--tx)'};text-align:right">R$&nbsp;${fc(v)}</b><b style="color:${cl||'#f87171'};text-align:right">${pct}</b>`;
   const _pc=v=>desGrand>0?(v/desGrand*100).toFixed(1)+'%':'—';
   let _desExtra='';
@@ -2737,11 +2746,11 @@ function rDash(){
   // Assinaturas: qualquer origem (DIARIA, INVEST, CARTAO) com cat=Assinaturas
   const _isSub=cat=>['Assinatura','Assinaturas','Hobby/Assin.'].includes(cat);
   // padrões de assinaturas conhecidas (mesmo que a categoria não esteja como Assinatura)
-  const _subPat=['totalpass','claro','netflix','combinaqui','youtube','vindi *agf','vindi*agf','vindi  *agf','vindi *investidor','vindi  *investidor','amazon servicos','apple.com/bill'];
+  const _subPat=['totalpass','claro','netflix','combinaqui','youtube','vindi *agf','vindi*agf','vindi  *agf','vindi *investidor','vindi  *investidor','apple.com/bill'];
   const _normS=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
   const _subKey=desc=>{let s=_normS(desc);s=s.replace(/\d{1,2}\s*\/\s*\d{1,2}\s*$/,'');s=s.replace(/\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\s*\/\s*\d{0,4}$/,'');s=s.replace(/mensalidade/g,'');s=s.replace(/[^a-z]+/g,' ').trim();return s.replace(/\s+/g,' ');};
   const _subLabel=desc=>{let s=desc.replace(/\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,'');s=s.replace(/\s*\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\s*\/\s*\d{0,4}\s*$/i,'');s=s.replace(/^Mensalidade\s+/i,'');return s.replace(/\s{2,}/g,' ').trim();};
-  const _isCandSub=(desc,cat)=>{const d=_normS(desc);return _isSub(cat)||_subPat.some(p=>d.includes(p));};
+  const _isCandSub=(desc,cat)=>{const d=_normS(desc);if(SUB_EXCLUIR.some(p=>d.includes(p)))return false;return _isSub(cat)||_subPat.some(p=>d.includes(p));};
   const _todayMes=(()=>{const d=new Date();return _mNm[d.getMonth()]+'/'+d.getFullYear();})();
   const _subHi=_ordM(_todayMes),_subLo=_subHi-3; // últimos 4 meses
   // agrupa por estabelecimento + valor: cada cobrança recorrente é detectada separadamente (ex.: Apple 129,90 e 19,90)
@@ -2752,7 +2761,7 @@ function rDash(){
   CARTAO.forEach(r=>{const c=RC[r.id]||r.cat;if(_isCandSub(r.desc,c))_scanSub(r.desc,r.val,r.mes);});
   // recorrente = mesmo estabelecimento+valor em >=2 dos últimos 4 meses (exclui compra única e cobrança anual)
   let _subs=Object.values(_subG).filter(g=>Object.keys(g.mon).length>=2).map(g=>({desc:_subLabel(g.desc),val:g.val}));
-  _subs.push({desc:'Raia Livre (Teo)',val:269});
+  _subs.push(...SUB_FIXAS);
   _subs.sort((a,b)=>b.val-a.val);
   const _subsTot=_subs.reduce((s,{val})=>s+val,0);
   const _fxMae=500;
@@ -2797,13 +2806,14 @@ function rDash(){
     const extrasHist=Object.entries(_extrasProj).filter(([m])=>_mesNum(m)===_mesNum(mes));
     const extrasTot=extrasHist.reduce((s,[,mc])=>s+Object.values(mc).reduce((a,b)=>a+b,0),0);
     const totalRec=_S27?_S27.M[_mesNum(mes)].tot:_recAvg+extrasTot;
-    const totDes=_fxTotal+parcTot;const saldo=totalRec-totDes;const sc=saldo>=0?'var(--gr)':'var(--rd)';
+    const _mi=_mesNum(mes),_ay=Math.floor(_ordM(mes)/12);const _morM=moradiaMes(_ay,_mi);const _anM=SUB_ANUAIS.filter(a=>a.mes===_mi);const _anTot=_anM.reduce((t,a)=>t+a.val,0);
+    const totDes=_fxTotal-Math.max(0,(_fxAvg['Moradia']||0)-_flaMor)+Math.max(0,_morM-_flaMor)+_anTot+parcTot;const saldo=totalRec-totDes;const sc=saldo>=0?'var(--gr)':'var(--rd)';
     const _row=(lbl,val,mu)=>`<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px" title="${lbl}"><span style="color:var(--mu);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mu?lbl:lbl}</span><span>R$ ${fc(val)}</span></div>`;
     const _rowCred=(lbl,bruto,cred)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-top:4px"><span style="color:var(--mu);max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${lbl}">${lbl}</span><span style="display:flex;gap:6px;align-items:baseline;white-space:nowrap"><span style="color:var(--mu);font-size:10px">R$ ${fc(bruto)}</span><span style="color:var(--rd);font-size:10px">&minus;${fc(cred)}</span><span style="color:var(--mu);font-size:10px">&#8594;</span><span style="color:var(--tx);font-weight:700">R$ ${fc(Math.max(0,bruto-cred))}</span></span></div>`;
-    const fxRows=(_fxAvg['Moradia']>0.01?_rowCred('Moradia',_fxAvg['Moradia'],_flaMor):'')+_row('M&#227;e',_fxMae,true);
-    const _fxDispTot=Math.max(0,(_fxAvg['Moradia']||0)-_flaMor)+_fxMae;const fxTotRow=`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total (voc&ecirc; paga)</span><span style="color:var(--ac);font-weight:800">${fc(_fxDispTot)}</span></div>`;
-    const subRows=_subs.map(({desc,val})=>_row(desc,val,true)).join('');
-    const subTotRow=_subs.length>1?`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total</span><span style="color:var(--tx)">${fc(_subsTot)}</span></div>`:'';
+    const fxRows=(_morM>0.01?_rowCred(_morM>MORADIA_BOLETO+0.01?'Moradia (+IGP-M)':'Moradia',_morM,_flaMor):'')+_row('M&#227;e',_fxMae,true);
+    const _fxDispTot=Math.max(0,_morM-_flaMor)+_fxMae;const fxTotRow=`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total (voc&ecirc; paga)</span><span style="color:var(--ac);font-weight:800">${fc(_fxDispTot)}</span></div>`;
+    const subRows=[..._subs,..._anM].map(({desc,val})=>_row(desc,val,true)).join('');
+    const subTotRow=_subs.length>1?`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total</span><span style="color:var(--tx)">${fc(_subsTot+_anTot)}</span></div>`:'';
     const pRows=parc.map(p=>/arajet/i.test(p.desc)?_rowCred(p.desc,p.val,_flaArajet):_row(p.desc,p.val,true)).join('');
     const parcTotRow=parc.length>1?`<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-top:5px;padding-top:4px;border-top:1px solid var(--br)"><span style="color:var(--tx)">Total</span><span style="color:var(--tx)">${fc(parcTot)}</span></div>`:'';
     const parcSec=parc.length?`<div class="kpi-lbl" style="margin-top:12px">Parcelas cart&#227;o</div>${pRows}${parcTotRow}`:'<div style="font-size:11px;color:var(--mu);margin-top:8px;font-style:italic">Sem parcelas</div>';
